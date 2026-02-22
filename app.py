@@ -10,6 +10,15 @@ from detector.sequence_builder import build_sequences
 from detector.profiler import train_user, get_profile_stats
 from detector.detector import detect
 
+# load .env if it exists
+_env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if "=" in _line and not _line.startswith("#"):
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k, _v)
 app = Flask(__name__)
 app.secret_key = "csids-secret-key"
 UPLOAD_FOLDER = "uploads"
@@ -94,9 +103,11 @@ def dashboard():
 @app.route("/analyze", methods=["GET", "POST"])
 def analyze():
     if request.method == "POST":
-        user  = request.form.get("user", "").strip()
-        mode  = request.form.get("mode")
-        file  = request.files.get("history")
+        user         = request.form.get("user", "").strip()
+        mode         = request.form.get("mode")
+        email        = request.form.get("email", "").strip()
+        notify       = request.form.get("notify_email") == "on"
+        file         = request.files.get("history")
 
         if not user:
             flash("Username is required.", "error")
@@ -111,7 +122,7 @@ def analyze():
             return redirect(url_for("analyze"))
 
         filename = secure_filename(file.filename)
-        path = os.path.join(UPLOAD_FOLDER, filename)
+        path     = os.path.join(UPLOAD_FOLDER, filename)
         file.save(path)
 
         if not is_text_file(path):
@@ -127,7 +138,8 @@ def analyze():
 
         if mode == "train":
             count = train_user(user, sequences)
-            flash(f"Profile trained for '{user}' — {count} sequences stored.", "success")
+            flash(f"Profile trained for '{user}' — {count} sequences stored.",
+                  "success")
             return redirect(url_for("analyze"))
 
         alerts, error = detect(user, sequences)
@@ -141,18 +153,23 @@ def analyze():
             cur  = conn.cursor()
             for a in alerts:
                 cur.execute("""
-                    INSERT INTO alerts (user, sequence, reason, risk_score, risky_cmds)
+                    INSERT INTO alerts
+                        (user, sequence, reason, risk_score, risky_cmds)
                     VALUES (?, ?, ?, ?, ?)
                 """, (user, a["sequence"], a["reason"],
                       a["risk_score"], ",".join(a["risky"])))
             conn.commit()
             conn.close()
 
+            # ✅ send email if requested
+            if notify and email:
+                from notifier import send_alert_email
+                send_alert_email(email, user, alerts)
+
         return render_template("results.html",
             alerts=alerts, user=user, total=len(sequences))
 
     return render_template("analyze.html")
-
 
 @app.route("/alerts")
 def alerts_page():
@@ -171,7 +188,56 @@ def live_monitor():
 
 @app.route("/settings")
 def settings():
-    return render_template("settings.html")
+    # load existing config from .env if it exists
+    smtp_host = os.environ.get("CSIDS_SMTP_HOST", "")
+    smtp_port = os.environ.get("CSIDS_SMTP_PORT", "587")
+    smtp_user = os.environ.get("CSIDS_SMTP_USER", "")
+    return render_template("settings.html",
+        smtp_host=smtp_host,
+        smtp_port=smtp_port,
+        smtp_user=smtp_user
+    )
+
+
+@app.route("/settings/save", methods=["POST"])
+def settings_save():
+    smtp_host = request.form.get("smtp_host", "smtp.gmail.com")
+    smtp_port = request.form.get("smtp_port", "587")
+    smtp_user = request.form.get("smtp_user", "")
+    smtp_pass = request.form.get("smtp_pass", "")
+
+    # write to .env file
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+
+    # read existing to preserve password if blank
+    existing = {}
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    existing[k] = v
+
+    existing["CSIDS_SMTP_HOST"] = smtp_host
+    existing["CSIDS_SMTP_PORT"] = smtp_port
+    existing["CSIDS_SMTP_USER"] = smtp_user
+    if smtp_pass:
+        existing["CSIDS_SMTP_PASS"] = smtp_pass
+
+    with open(env_path, "w") as f:
+        for k, v in existing.items():
+            f.write(f"{k}={v}\n")
+
+    # apply to current environment immediately
+    os.environ["CSIDS_SMTP_HOST"] = smtp_host
+    os.environ["CSIDS_SMTP_PORT"] = smtp_port
+    os.environ["CSIDS_SMTP_USER"] = smtp_user
+    if smtp_pass:
+        os.environ["CSIDS_SMTP_PASS"] = smtp_pass
+
+    flash("✅ Settings saved successfully.", "success")
+    return redirect(url_for("settings"))
 
 @app.route("/api/live-log")
 def api_live_log():

@@ -3,20 +3,106 @@
 {% block page_title %}Settings{% endblock %}
 
 {% block content %}
-<div style="max-width:580px;">
+<div style="max-width:600px;">
+
+    <!-- SMTP config -->
+    <div class="panel mb-4">
+        <div class="panel-header">
+            <div class="panel-title">📧 Email / SMTP Settings</div>
+        </div>
+        <div class="panel-body">
+            <form method="POST" action="/settings/save">
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>SMTP Host</label>
+                        <input type="text" name="smtp_host"
+                               value="{{ smtp_host or 'smtp.gmail.com' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>SMTP Port</label>
+                        <input type="text" name="smtp_port"
+                               value="{{ smtp_port or '587' }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Email Address</label>
+                    <input type="email" name="smtp_user"
+                           value="{{ smtp_user or '' }}"
+                           placeholder="you@gmail.com">
+                </div>
+
+                <div class="form-group">
+                    <label>App Password</label>
+                    <input type="password" name="smtp_pass"
+                           placeholder="leave blank to keep existing">
+                    <div class="hint">
+                        For Gmail: use an App Password, not your real password.
+                        <a href="https://myaccount.google.com/apppasswords"
+                           target="_blank"
+                           style="color:var(--accent);">
+                           Generate one here →
+                        </a>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    💾 Save Settings
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- system info -->
     <div class="panel">
         <div class="panel-header">
             <div class="panel-title">⚙ System Info</div>
         </div>
-        <div class="panel-body">
+        <div class="panel-body" style="padding:0;">
             <table class="data-table">
-                <tr><td style="color:var(--dim);">Version</td>          <td class="mono">CSIDS v2.0</td></tr>
-                <tr><td style="color:var(--dim);">Database</td>         <td class="mono">SQLite (ids.db)</td></tr>
-                <tr><td style="color:var(--dim);">Algorithm</td>        <td class="mono">Frequency + Risk Scoring</td></tr>
-                <tr><td style="color:var(--dim);">Window Size</td>      <td class="mono">3 commands</td></tr>
-                <tr><td style="color:var(--dim);">High Risk Threshold</td>   <td class="mono">6.0 / 10.0</td></tr>
-                <tr><td style="color:var(--dim);">Medium Risk Threshold</td> <td class="mono">3.0 / 10.0</td></tr>
-                <tr><td style="color:var(--dim);">Risky Commands</td>   <td class="mono">35+</td></tr>
+                <tr>
+                    <td style="color:var(--dim);">Version</td>
+                    <td class="mono">CSIDS v2.0</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">Database</td>
+                    <td class="mono">SQLite (ids.db)</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">Algorithm</td>
+                    <td class="mono">Frequency + Risk Scoring</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">Window Size</td>
+                    <td class="mono">3 commands</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">High Risk Threshold</td>
+                    <td class="mono">6.0 / 10.0</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">Medium Risk Threshold</td>
+                    <td class="mono">3.0 / 10.0</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">Risky Commands</td>
+                    <td class="mono">35+</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--dim);">SMTP Status</td>
+                    <td class="mono">
+                        {% if smtp_user %}
+                            <span style="color:var(--green);">
+                                ✅ Configured ({{ smtp_user }})
+                            </span>
+                        {% else %}
+                            <span style="color:var(--dim);">
+                                Not configured
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
             </table>
         </div>
     </div>

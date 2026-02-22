@@ -14,7 +14,8 @@
                 <div class="grid-2">
                     <div class="form-group">
                         <label>Username</label>
-                        <input type="text" name="user" placeholder="e.g. shashi" required>
+                        <input type="text" name="user"
+                               placeholder="e.g. shashi" required>
                     </div>
                     <div class="form-group">
                         <label>Mode</label>
@@ -27,14 +28,37 @@
 
                 <div class="form-group">
                     <label>Upload .bash_history File</label>
-                    <input type="file" name="history" accept=".txt,.log,.history" required>
+                    <input type="file" name="history"
+                           accept=".txt,.log,.history" required>
                     <div class="hint">
-                        Export your history first:
-                        <span class="mono" style="color:var(--green);">cp ~/.bash_history history.txt</span>
+                        Export first:
+                        <span class="mono" style="color:var(--green);">
+                            cp ~/.bash_history history.txt
+                        </span>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Submit</button>
+                <!-- email notification section -->
+                <div class="form-group">
+                    <label>Alert Email (optional)</label>
+                    <input type="email" name="email"
+                           placeholder="you@example.com">
+                    <div class="hint">
+                        Receive an email if intrusions are detected.
+                        Configure SMTP in Settings first.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="notify_email">
+                        Send email alert if intrusions are detected
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Submit
+                </button>
             </form>
         </div>
     </div>
