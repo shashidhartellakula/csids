@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CSIDS{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg:      #090e1a;
+            --bg2:     #0d1526;
+            --panel:   #0f1e38;
+            --border:  #1e3a5f;
+            --accent:  #00d4ff;
+            --red:     #ff3864;
+            --green:   #00ff9f;
+            --orange:  #ff8c00;
+            --warn:    #ffb800;
+            --text:    #c8d8f0;
+            --dim:     #5a7a9a;
+            --bright:  #f0f8ff;
+            --mono:    'Share Tech Mono', monospace;
+            --ui:      'Rajdhani', sans-serif;
+            --body:    'Exo 2', sans-serif;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--body);
+            min-height: 100vh;
+        }
+
+        /* scanline overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* grid background */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            position: fixed;
+            top:0; left:0;
+            width: 220px;
+            height: 100vh;
+            background: linear-gradient(180deg, #0a1628, #080e1c);
+            border-right: 1px solid var(--border);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            padding: 24px 20px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo-text {
+            font-family: var(--mono);
+            font-size: 22px;
+            color: var(--accent);
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(0,212,255,0.5);
+        }
+        .logo-sub {
+            font-size: 10px;
+            color: var(--dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .sys-status {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--dim);
+        }
+        .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: blink 2s infinite;
+        }
+        @keyframes blink {
+            0%,100% { opacity:1; } 50% { opacity:0.3; }
+        }
+
+        .nav { flex:1; padding: 14px 0; }
+        .nav-label {
+            padding: 8px 20px 4px;
+            font-size: 10px;
+            color: var(--dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            color: var(--dim);
+            text-decoration: none;
+            font-family: var(--ui);
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .nav-item:hover, .nav-item.active {
+            color: var(--accent);
+            background: rgba(0,212,255,0.06);
+            border-left-color: var(--accent);
+        }
+
+        /* ── MAIN ── */
+        .main {
+            margin-left: 220px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        .topbar {
+            height: 54px;
+            background: rgba(10,22,40,0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+        }
+        .page-title {
+            font-family: var(--ui);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--bright);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .topbar-right {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--dim);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        #clock { color: var(--accent); }
+
+        .content { padding: 28px; }
+
+        /* ── PANELS ── */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+        .panel::before {
+            content: '';
+            position: absolute;
+            top:0; left:0; right:0; height:1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.3;
+        }
+        .panel-header {
+            padding: 13px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-title {
+            font-family: var(--ui);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .panel-body { padding: 20px; }
+
+        /* ── STAT CARDS ── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            position: relative;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+        .stat-card::after {
+            content:''; position:absolute;
+            bottom:0; left:0; right:0; height:2px;
+        }
+        .stat-card.blue::after  { background: var(--accent); }
+        .stat-card.red::after   { background: var(--red); }
+        .stat-card.green::after { background: var(--green); }
+        .stat-card.warn::after  { background: var(--warn); }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-family: var(--ui);
+            margin-bottom: 10px;
+        }
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 30px;
+            line-height: 1;
+        }
+        .stat-card.blue  .stat-value { color: var(--accent); }
+        .stat-card.red   .stat-value { color: var(--red); }
+        .stat-card.green .stat-value { color: var(--green); }
+        .stat-card.warn  .stat-value { color: var(--warn); }
+        .stat-sub {
+            font-size: 11px;
+            color: var(--dim);
+            margin-top: 6px;
+        }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: var(--ui);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: rgba(0,212,255,0.1); border-color: var(--accent); color: var(--accent); }
+        .btn-primary:hover { background: rgba(0,212,255,0.2); box-shadow: 0 0 14px rgba(0,212,255,0.3); }
+        .btn-success { background: rgba(0,255,159,0.1); border-color: var(--green); color: var(--green); }
+        .btn-success:hover { background: rgba(0,255,159,0.2); }
+        .btn-danger  { background: rgba(255,56,100,0.1); border-color: var(--red); color: var(--red); }
+        .btn-danger:hover  { background: rgba(255,56,100,0.2); }
+        .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+        /* ── FORMS ── */
+        .form-group { margin-bottom: 18px; }
+        label {
+            display: block;
+            font-family: var(--ui);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+        }
+        input[type="text"], input[type="email"],
+        input[type="file"], select, textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.08); }
+        select option { background: var(--bg2); }
+        .hint { font-size: 11px; color: var(--dim); margin-top: 5px; }
+        .checkbox-row {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; color: var(--text); cursor: pointer;
+        }
+        input[type="checkbox"] { width:15px; height:15px; accent-color: var(--accent); }
+
+        /* ── TABLES ── */
+        .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .data-table th {
+            font-family: var(--ui);
+            font-size: 10px; font-weight:700;
+            color: var(--dim);
+            letter-spacing: 2px; text-transform: uppercase;
+            padding: 10px 14px; text-align:left;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+        }
+        .data-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(30,58,95,0.4);
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: rgba(0,212,255,0.02); }
+        .mono { font-family: var(--mono); font-size: 12px; }
+
+        /* ── BADGES ── */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px; border-radius: 3px;
+            font-family: var(--mono); font-size: 11px; font-weight: bold;
+        }
+        .badge-high   { background: rgba(255,56,100,0.15); color: var(--red);    border: 1px solid var(--red); }
+        .badge-medium { background: rgba(255,140,0,0.15);  color: var(--orange); border: 1px solid var(--orange); }
+        .badge-low    { background: rgba(0,255,159,0.12);  color: var(--green);  border: 1px solid var(--green); }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 7px; border-radius: 10px;
+            font-family: var(--mono); font-size: 11px; margin: 1px;
+            background: rgba(255,56,100,0.12);
+            color: var(--red);
+            border: 1px solid rgba(255,56,100,0.3);
+        }
+
+        /* ── FLASH MESSAGES ── */
+        .flashes { padding: 0 28px; margin-top: 14px; }
+        .flash {
+            padding: 11px 16px; border-radius: 4px;
+            font-size: 13px; margin-bottom: 8px; border-left: 3px solid;
+        }
+        .flash.success { background: rgba(0,255,159,0.08); border-color: var(--green); color: var(--green); }
+        .flash.error   { background: rgba(255,56,100,0.08); border-color: var(--red);   color: var(--red); }
+        .flash.warning { background: rgba(255,184,0,0.08);  border-color: var(--warn);  color: var(--warn); }
+
+        /* ── LAYOUT HELPERS ── */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .mb-4 { margin-bottom: 20px; }
+        .mb-6 { margin-bottom: 24px; }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeIn {
+            from { opacity:0; transform:translateY(8px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.35s ease both; }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width:5px; height:5px; }
+        ::-webkit-scrollbar-track { background: var(--bg2); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<aside class="sidebar">
+    <div class="logo">
+        <div class="logo-text">CSIDS</div>
+        <div class="logo-sub">Intrusion Detection</div>
+    </div>
+    <div class="sys-status">
+        <div class="dot"></div> System Active
+    </div>
+    <nav class="nav">
+        <div class="nav-label">Main</div>
+        <a href="{{ url_for('dashboard') }}"
+           class="nav-item {% if request.endpoint=='dashboard' %}active{% endif %}">
+            ◈ Dashboard
+        </a>
+        <a href="{{ url_for('analyze') }}"
+           class="nav-item {% if request.endpoint=='analyze' %}active{% endif %}">
+            ⬡ Analyze
+        </a>
+        <a href="{{ url_for('alerts_page') }}"
+           class="nav-item {% if request.endpoint=='alerts_page' %}active{% endif %}">
+            ⚠ Alerts
+        </a>
+        <a href="{{ url_for('live_monitor') }}"
+           class="nav-item {% if request.endpoint=='live_monitor' %}active{% endif %}">
+            ◉ Live Monitor
+        </a>
+        <div class="nav-label" style="margin-top:10px;">Config</div>
+        <a href="{{ url_for('settings') }}"
+           class="nav-item {% if request.endpoint=='settings' %}active{% endif %}">
+            ⚙ Settings
+        </a>
+    </nav>
+</aside>
+
+<div class="main">
+    <div class="topbar">
+        <div class="page-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div class="topbar-right">
+            <span id="clock"></span>
+            <span>CSIDS v2.0</span>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flashes">
+        {% for cat, msg in messages %}
+        <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="content fade-in">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<script>
+function updateClock() {
+    const n = new Date();
+    document.getElementById('clock').textContent =
+        n.toISOString().replace('T',' ').substring(0,19) + ' UTC';
+}
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Results{% endblock %}
+{% block page_title %}Detection Results — {{ user }}{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+    <div class="panel mb-4">
+        <div class="panel-body" style="padding:16px 20px;">
+            <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
+                <div>
+                    <div class="stat-label">User</div>
+                    <div class="mono" style="color:var(--accent);font-size:18px;">{{ user }}</div>
+                </div>
+                <div>
+                    <div class="stat-label">Sequences Analyzed</div>
+                    <div class="mono" style="font-size:18px;color:var(--bright);">{{ total }}</div>
+                </div>
+                <div>
+                    <div class="stat-label">Alerts</div>
+                    {% if alerts %}
+                    <div class="mono" style="font-size:18px;color:var(--red);">{{ alerts|length }} 🚨</div>
+                    {% else %}
+                    <div class="mono" style="font-size:18px;color:var(--green);">0 ✅</div>
+                    {% endif %}
+                </div>
+                <div style="margin-left:auto;">
+                    <a href="{{ url_for('analyze') }}" class="btn btn-primary">← New Analysis</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if alerts %}
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">🚨 Intrusion Alerts</div>
+        </div>
+        <div class="panel-body" style="padding:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Sequence</th>
+                        <th>Reason</th>
+                        <th>Risk</th>
+                        <th>Risky Commands</th>
+                        <th>Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for a in alerts %}
+                <tr>
+                    <td style="color:var(--dim);">{{ loop.index }}</td>
+                    <td class="mono" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                        title="{{ a.sequence }}">{{ a.sequence }}</td>
+                    <td style="font-size:12px;color:var(--dim);">{{ a.reason }}</td>
+                    <td>
+                        {% if a.risk_score >= 6 %}
+                            <span class="badge badge-high">{{ a.risk_score }}</span>
+                        {% elif a.risk_score >= 3 %}
+                            <span class="badge badge-medium">{{ a.risk_score }}</span>
+                        {% else %}
+                            <span class="badge badge-low">{{ a.risk_score }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for cmd in a.risky %}
+                        <span class="tag">{{ cmd }}</span>
+                        {% endfor %}
+                    </td>
+                    <td class="mono" style="color:{% if a.frequency == 0 %}var(--red){% else %}var(--orange){% endif %};">
+                        {{ a.frequency }}x
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="panel" style="text-align:center;padding:60px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;">✅</div>
+        <div style="font-family:var(--ui);font-size:20px;color:var(--green);letter-spacing:2px;">
+            NO INTRUSIONS DETECTED
+        </div>
+        <div style="color:var(--dim);font-size:14px;margin-top:8px;">
+            All {{ total }} sequences match the normal profile for
+            <span style="color:var(--accent);">{{ user }}</span>.
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

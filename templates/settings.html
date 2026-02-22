@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div style="max-width:580px;">
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">⚙ System Info</div>
+        </div>
+        <div class="panel-body">
+            <table class="data-table">
+                <tr><td style="color:var(--dim);">Version</td>          <td class="mono">CSIDS v2.0</td></tr>
+                <tr><td style="color:var(--dim);">Database</td>         <td class="mono">SQLite (ids.db)</td></tr>
+                <tr><td style="color:var(--dim);">Algorithm</td>        <td class="mono">Frequency + Risk Scoring</td></tr>
+                <tr><td style="color:var(--dim);">Window Size</td>      <td class="mono">3 commands</td></tr>
+                <tr><td style="color:var(--dim);">High Risk Threshold</td>   <td class="mono">6.0 / 10.0</td></tr>
+                <tr><td style="color:var(--dim);">Medium Risk Threshold</td> <td class="mono">3.0 / 10.0</td></tr>
+                <tr><td style="color:var(--dim);">Risky Commands</td>   <td class="mono">35+</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

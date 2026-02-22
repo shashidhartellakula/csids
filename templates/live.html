@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Live Monitor{% endblock %}
+{% block page_title %}Live Monitor{% endblock %}
+
+{% block content %}
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title">◉ Live Monitor</div>
+    </div>
+    <div class="panel-body">
+        <p style="color:var(--dim);margin-bottom:16px;">
+            Run the monitor script in your terminal to see live command detection here.
+        </p>
+        <div style="background:#020810;border:1px solid var(--border);border-radius:4px;
+                    padding:16px;font-family:var(--mono);font-size:13px;color:var(--green);">
+            python monitor.py --user shashi --history ~/.bash_history
+        </div>
+        <p style="color:var(--dim);font-size:12px;margin-top:12px;">
+            We'll build the full live feed in Phase 5. ⚡
+        </p>
+    </div>
+</div>
+{% endblock %}

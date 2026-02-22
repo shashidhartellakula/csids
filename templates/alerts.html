@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+{% block page_title %}All Alerts{% endblock %}
+
+{% block content %}
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title">⚠ Alert Log</div>
+        <span style="font-size:12px;color:var(--dim);">{{ alerts|length }} total</span>
+    </div>
+    <div class="panel-body" style="padding:0;">
+        {% if alerts %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Sequence</th>
+                    <th>Reason</th>
+                    <th>Risk</th>
+                    <th>Commands</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for a in alerts %}
+            <tr>
+                <td style="font-size:11px;color:var(--dim);white-space:nowrap;">{{ a['timestamp'][:16] }}</td>
+                <td class="mono">{{ a['user'] }}</td>
+                <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                    title="{{ a['sequence'] }}">{{ a['sequence'] }}</td>
+                <td style="font-size:12px;color:var(--dim);">{{ a['reason'] }}</td>
+                <td>
+                    {% set rs = a['risk_score'] %}
+                    {% if rs >= 6 %}<span class="badge badge-high">{{ rs }}</span>
+                    {% elif rs >= 3 %}<span class="badge badge-medium">{{ rs }}</span>
+                    {% else %}<span class="badge badge-low">{{ rs }}</span>{% endif %}
+                </td>
+                <td>
+                    {% if a['risky_cmds'] %}
+                    {% for cmd in a['risky_cmds'].split(',') %}
+                    <span class="tag">{{ cmd }}</span>
+                    {% endfor %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding:40px;text-align:center;color:var(--dim);">No alerts yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
