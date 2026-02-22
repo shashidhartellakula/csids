@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>User-Specific Linux IDS</title>
-</head>
+<head><title>User-Specific Linux IDS</title></head>
 <body>
 <h2>User-Specific Command Sequence IDS</h2>
+
+{% if error %}
+<p style="color:red;">❌ {{ error }}</p>
+{% endif %}
 
 <form method="POST" enctype="multipart/form-data">
     Username:
@@ -16,8 +18,8 @@
         <option value="detect">Detect Intrusion</option>
     </select><br><br>
 
-    Upload .bash_history:
-    <input type="file" name="history" required><br><br>
+    Upload .bash_history (.txt or .log):
+    <input type="file" name="history" accept=".txt,.log" required><br><br>
 
     <button type="submit">Submit</button>
 </form>
