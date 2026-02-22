@@ -1,3 +1,5 @@
+from flask import send_file
+import io
 from flask import Flask, render_template, request, redirect, url_for, flash
 import os
 from werkzeug.utils import secure_filename
@@ -209,6 +211,34 @@ def api_recent_alerts():
     conn.close()
     from flask import jsonify
     return jsonify(rows)
+@app.route("/report/<username>")
+def download_report(username):
+    from pdf_report import generate_pdf_report
+    from detector.profiler import get_profile_stats
 
+    conn = get_db()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT * FROM alerts WHERE user = ?
+        ORDER BY timestamp DESC LIMIT 500
+    """, (username,))
+    rows   = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    # convert risky_cmds string back to list for the PDF
+    alerts = []
+    for r in rows:
+        r["risky"] = r["risky_cmds"].split(",") if r["risky_cmds"] else []
+        alerts.append(r)
+
+    stats    = get_profile_stats(username)
+    pdf_bytes = generate_pdf_report(username, alerts, stats)
+
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"csids_report_{username}.pdf"
+    )
 if __name__ == "__main__":
     app.run(debug=True)
