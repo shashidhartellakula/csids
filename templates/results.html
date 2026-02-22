@@ -5,6 +5,7 @@
 {% block content %}
 <div style="max-width:900px;">
 
+    <!-- SUMMARY BAR -->
     <div class="panel mb-4">
         <div class="panel-body" style="padding:16px 20px;">
             <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
@@ -19,27 +20,34 @@
                 <div>
                     <div class="stat-label">Alerts</div>
                     {% if alerts %}
-                    <div class="mono" style="font-size:18px;color:var(--red);">{{ alerts|length }} 🚨</div>
+                    <div class="mono" style="font-size:18px;color:var(--red);">
+                        {{ alerts|length }} 🚨
+                    </div>
                     {% else %}
-                    <div class="mono" style="font-size:18px;color:var(--green);">0 ✅</div>
+                    <div class="mono" style="font-size:18px;color:var(--green);">
+                        0 ✅
+                    </div>
                     {% endif %}
-                </div>
-                <div style="margin-left:auto;">
-                    <a href="{{ url_for('analyze') }}" class="btn btn-primary">← New Analysis</a>
                 </div>
                 <div style="margin-left:auto;display:flex;gap:10px;">
                     <a href="{{ url_for('download_report', username=user) }}"
-                        class="btn btn-primary">↓ PDF Report</a>
-                    <a href="{{ url_for('analyze') }}" class="btn btn-success">← New Analysis</a>
+                       class="btn btn-primary">↓ PDF Report</a>
+                    <a href="{{ url_for('analyze') }}"
+                       class="btn btn-success">← New Analysis</a>
                 </div>
             </div>
         </div>
     </div>
 
     {% if alerts %}
+
+    <!-- ALERTS TABLE -->
     <div class="panel">
         <div class="panel-header">
             <div class="panel-title">🚨 Intrusion Alerts</div>
+            <span style="font-size:12px;color:var(--dim);">
+                {{ alerts|length }} suspicious sequence(s) found
+            </span>
         </div>
         <div class="panel-body" style="padding:0;">
             <table class="data-table">
@@ -57,25 +65,42 @@
                 {% for a in alerts %}
                 <tr>
                     <td style="color:var(--dim);">{{ loop.index }}</td>
-                    <td class="mono" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                        title="{{ a.sequence }}">{{ a.sequence }}</td>
-                    <td style="font-size:12px;color:var(--dim);">{{ a.reason }}</td>
+
+                    <td class="mono"
+                        style="max-width:240px;overflow:hidden;
+                               text-overflow:ellipsis;white-space:nowrap;"
+                        title="{{ a['sequence'] }}">
+                        {{ a['sequence'] }}
+                    </td>
+
+                    <td style="font-size:12px;color:var(--dim);">
+                        {{ a['reason'] }}
+                    </td>
+
                     <td>
-                        {% if a.risk_score >= 6 %}
-                            <span class="badge badge-high">{{ a.risk_score }}</span>
-                        {% elif a.risk_score >= 3 %}
-                            <span class="badge badge-medium">{{ a.risk_score }}</span>
+                        {% set rs = a['risk_score'] %}
+                        {% if rs >= 6 %}
+                            <span class="badge badge-high">{{ rs }}</span>
+                        {% elif rs >= 3 %}
+                            <span class="badge badge-medium">{{ rs }}</span>
                         {% else %}
-                            <span class="badge badge-low">{{ a.risk_score }}</span>
+                            <span class="badge badge-low">{{ rs }}</span>
                         {% endif %}
                     </td>
+
                     <td>
-                        {% for cmd in a.risky %}
+                        {% for cmd in a['risky'] %}
                         <span class="tag">{{ cmd }}</span>
                         {% endfor %}
                     </td>
-                    <td class="mono" style="color:{% if a.frequency == 0 %}var(--red){% else %}var(--orange){% endif %};">
-                        {{ a.frequency }}x
+
+                    <td class="mono"
+                        style="color:{% if a['frequency'] == 0 %}
+                                   var(--red)
+                               {% else %}
+                                   var(--orange)
+                               {% endif %};">
+                        {{ a['frequency'] }}x
                     </td>
                 </tr>
                 {% endfor %}
@@ -85,9 +110,12 @@
     </div>
 
     {% else %}
+
+    <!-- NO ALERTS -->
     <div class="panel" style="text-align:center;padding:60px 20px;">
         <div style="font-size:48px;margin-bottom:16px;">✅</div>
-        <div style="font-family:var(--ui);font-size:20px;color:var(--green);letter-spacing:2px;">
+        <div style="font-family:var(--ui);font-size:20px;
+                    color:var(--green);letter-spacing:2px;">
             NO INTRUSIONS DETECTED
         </div>
         <div style="color:var(--dim);font-size:14px;margin-top:8px;">
@@ -95,6 +123,7 @@
             <span style="color:var(--accent);">{{ user }}</span>.
         </div>
     </div>
+
     {% endif %}
 
 </div>
