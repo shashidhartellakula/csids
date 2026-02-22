@@ -7,7 +7,7 @@ HIGH_RISK_SCORE   = 6.0
 MEDIUM_RISK_SCORE = 3.0
 
 
-def detect(user, sequences, freq_threshold=FREQ_THRESHOLD):
+def detect(user, sequences, freq_threshold=FREQ_THRESHOLD, source="upload"):
     conn = get_db()
     cur = conn.cursor()
 
