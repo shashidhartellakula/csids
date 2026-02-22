@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User-Specific Linux IDS</title>
+</head>
+<body>
+<h2>User-Specific Command Sequence IDS</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    Username:
+    <input type="text" name="user" required><br><br>
+
+    Mode:
+    <select name="mode">
+        <option value="train">Train Normal Profile</option>
+        <option value="detect">Detect Intrusion</option>
+    </select><br><br>
+
+    Upload .bash_history:
+    <input type="file" name="history" required><br><br>
+
+    <button type="submit">Submit</button>
+</form>
+</body>
+</html>

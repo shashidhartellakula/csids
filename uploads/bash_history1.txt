@@ -1,0 +1,68 @@
+sudo apt update
+sudo apt remove xserver-xorg-video-vmware
+sudo apt autoremove
+sudo apt full-upgrade -y
+mkdir shashi
+mkdir csids
+cd csids/
+mkdir detector templates uploads
+touch app.py database.py requirements.txt README.md
+touch detector/__init__.py
+touch detector/preprocess.py
+touch detector/sequence_builder.py
+touch detector/profiler.py
+touch detector/detector.py
+touch templates/upload.html
+touch templates/result.html
+tree
+sudo apt install tree
+tree
+pip install -r requirements.txt
+sudo apt install python3-pip
+clear
+tree
+nano database.py 
+cd detector/
+nano preprocess.py 
+nano profiler.py 
+nano preprocess.py 
+nano profiler.py 
+nano sequence_builder.py 
+nano detector.py 
+cd ..
+nano app.py 
+cd templates/
+nano upload.html 
+nano result.html 
+python3 --versin
+python3 --version
+pip3 --version
+pip install -r requirements.txt
+cd ..
+pip install -r requirements.txt
+clear
+cd ..
+pwd
+sudo apt update
+sudo apt install python3-full python3-venv python3-pip -y
+cd csids
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -c "import flask; print(flask.__version__)"
+python app.py
+clear
+cd ~
+ls -a | grep .bash_history
+cp ~/.bash_history bash_history.txt
+cat ~/.bash_history
+cat bash_history.txt
+python app.py
+cd csids
+python app.py
+cd ..
+ls
+pwd
+who am i
+whoami
+history -a
