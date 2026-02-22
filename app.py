@@ -171,6 +171,44 @@ def live_monitor():
 def settings():
     return render_template("settings.html")
 
+@app.route("/api/live-log")
+def api_live_log():
+    since_id = request.args.get("since", 0, type=int)
+    user     = request.args.get("user", "")
+    conn     = get_db()
+    cur      = conn.cursor()
+    if user:
+        cur.execute("""
+            SELECT * FROM live_log
+            WHERE id > ? AND user = ?
+            ORDER BY id ASC LIMIT 50
+        """, (since_id, user))
+    else:
+        cur.execute("""
+            SELECT * FROM live_log
+            WHERE id > ?
+            ORDER BY id ASC LIMIT 50
+        """, (since_id,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    from flask import jsonify
+    return jsonify(rows)
+
+
+@app.route("/api/recent-alerts")
+def api_recent_alerts():
+    since_id = request.args.get("since", 0, type=int)
+    conn     = get_db()
+    cur      = conn.cursor()
+    cur.execute("""
+        SELECT * FROM alerts
+        WHERE id > ?
+        ORDER BY id ASC LIMIT 20
+    """, (since_id,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    from flask import jsonify
+    return jsonify(rows)
 
 if __name__ == "__main__":
     app.run(debug=True)
