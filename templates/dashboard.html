@@ -4,7 +4,8 @@
 
 {% block content %}
 
-<div class="stat-grid">
+<!-- STAT CARDS -->
+<div class="stat-grid mb-6">
     <div class="stat-card blue">
         <div class="stat-label">Monitored Users</div>
         <div class="stat-value">{{ total_users }}</div>
@@ -21,12 +22,37 @@
         <div class="stat-sub">last 24 hours</div>
     </div>
     <div class="stat-card green">
-        <div class="stat-label">Top User Alerts</div>
-        <div class="stat-value">{{ top_users[0][1] if top_users else 0 }}</div>
-        <div class="stat-sub">{{ top_users[0][0] if top_users else 'none' }}</div>
+        <div class="stat-label">Top Alerted User</div>
+        <div class="stat-value" style="font-size:18px;padding-top:4px;">
+            {{ top_users[0]['user'] if top_users else '—' }}
+        </div>
+        <div class="stat-sub">
+            {{ top_users[0]['cnt'] ~ ' alerts' if top_users else 'no data' }}
+        </div>
     </div>
 </div>
 
+<!-- CHARTS -->
+<div class="grid-2 mb-6">
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">⚡ Alerts by Hour of Day</div>
+        </div>
+        <div class="panel-body">
+            <canvas id="hourlyChart" height="180"></canvas>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">◈ Risk Distribution</div>
+        </div>
+        <div class="panel-body" style="display:flex;align-items:center;justify-content:center;">
+            <canvas id="riskChart" height="180"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- RECENT ALERTS -->
 <div class="panel">
     <div class="panel-header">
         <div class="panel-title">⚠ Recent Alerts</div>
@@ -47,7 +73,7 @@
             <tbody>
             {% for a in recent_alerts %}
             <tr>
-                <td class="mono">{{ a['user'] }}</td>
+                <td class="mono" style="color:var(--accent);">{{ a['user'] }}</td>
                 <td>
                     {% set rs = a['risk_score'] %}
                     {% if rs >= 6 %}
@@ -58,21 +84,90 @@
                         <span class="badge badge-low">{{ rs }}</span>
                     {% endif %}
                 </td>
-                <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                <td class="mono"
+                    style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                     title="{{ a['sequence'] }}">{{ a['sequence'] }}</td>
                 <td style="font-size:12px;color:var(--dim);">{{ a['reason'] }}</td>
-                <td style="font-size:11px;color:var(--dim);">{{ a['timestamp'][:16] }}</td>
+                <td style="font-size:11px;color:var(--dim);white-space:nowrap;">
+                    {{ a['timestamp'][:16] }}
+                </td>
             </tr>
             {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <div style="padding:40px;text-align:center;color:var(--dim);">
-            <div style="font-size:36px;margin-bottom:8px;">✅</div>
-            No alerts yet — train a profile and run detection to get started.
+        <div style="padding:50px;text-align:center;color:var(--dim);">
+            <div style="font-size:40px;margin-bottom:10px;">✅</div>
+            No alerts yet — go to
+            <a href="{{ url_for('analyze') }}" style="color:var(--accent);">Analyze</a>
+            to train a profile and run detection.
         </div>
         {% endif %}
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+const hourly   = {{ hourly | tojson }};
+const riskDist = {{ risk_dist | tojson }};
+
+// shared chart style
+Chart.defaults.color = '#5a7a9a';
+
+// ── Hourly bar chart ──
+new Chart(document.getElementById('hourlyChart'), {
+    type: 'bar',
+    data: {
+        labels: Array.from({length:24}, (_,i) => String(i).padStart(2,'0') + 'h'),
+        datasets: [{
+            data: hourly,
+            backgroundColor: hourly.map(v =>
+                v >= 5 ? 'rgba(255,56,100,0.7)' : 'rgba(0,212,255,0.4)'
+            ),
+            borderColor: hourly.map(v =>
+                v >= 5 ? '#ff3864' : '#00d4ff'
+            ),
+            borderWidth: 1,
+            borderRadius: 3,
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { color: 'rgba(30,58,95,0.5)' }, ticks: { color: '#5a7a9a' } },
+            y: { grid: { color: 'rgba(30,58,95,0.5)' }, ticks: { color: '#5a7a9a' }, beginAtZero: true }
+        }
+    }
+});
+
+// ── Risk doughnut chart ──
+const levels = ['High', 'Medium', 'Low'];
+const counts = levels.map(l => riskDist[l] || 0);
+const colors = ['rgba(255,56,100,0.8)', 'rgba(255,140,0,0.8)', 'rgba(0,255,159,0.8)'];
+
+new Chart(document.getElementById('riskChart'), {
+    type: 'doughnut',
+    data: {
+        labels: levels,
+        datasets: [{
+            data: counts.some(c => c > 0) ? counts : [1],
+            backgroundColor: counts.some(c => c > 0) ? colors : ['rgba(30,58,95,0.4)'],
+            borderColor: 'rgba(0,0,0,0.4)',
+            borderWidth: 2,
+        }]
+    },
+    options: {
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: { color: '#5a7a9a', padding: 16, font: { size: 12 } }
+            }
+        },
+        cutout: '65%',
+    }
+});
+</script>
 {% endblock %}
