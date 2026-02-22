@@ -3,7 +3,9 @@ import sqlite3
 DB_NAME = "ids.db"
 
 def get_db():
-    return sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row  # ✅ lets us access columns by name
+    return conn
 
 def init_db():
     conn = get_db()
@@ -11,9 +13,11 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS user_sequences (
-        user TEXT,
-        sequence TEXT,
-        frequency INTEGER
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        user      TEXT NOT NULL,
+        sequence  TEXT NOT NULL,
+        frequency INTEGER DEFAULT 1,
+        UNIQUE(user, sequence)
     )
     """)
 
