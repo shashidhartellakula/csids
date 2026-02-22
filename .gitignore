@@ -1,30 +1,28 @@
-cat > .gitignore << 'EOF'
 # Python
 venv/
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
-.Python
 
-# Database (don't commit your local DB)
+# Database
 *.db
 *.sqlite3
 
-# Uploads (user data)
+# Uploads (user data — don't commit)
 uploads/
 
-# Environment / secrets
+# Secrets
 .env
-*.env
 
-# VS Code
-.vscode/
+# Reports
+*.pdf
 
 # OS
 .DS_Store
 Thumbs.db
 
+# VS Code
+.vscode/
+
 # Logs
 *.log
-EOF
