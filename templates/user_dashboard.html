@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+{% block content %}
+
+<div class="stat-grid mb-6" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card red">
+        <div class="stat-label">My Total Alerts</div>
+        <div class="stat-value">{{ total_alerts }}</div>
+        <div class="stat-sub">all time</div>
+    </div>
+    <div class="stat-card warn">
+        <div class="stat-label">Alerts (24h)</div>
+        <div class="stat-value">{{ alerts_24h }}</div>
+        <div class="stat-sub">last 24 hours</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-label">Logged in as</div>
+        <div class="stat-value" style="font-size:18px;padding-top:6px;">{{ current_user.username }}</div>
+        <div class="stat-sub">regular user</div>
+    </div>
+</div>
+
+<div class="grid-2 mb-6">
+    <div class="panel">
+        <div class="panel-header"><div class="panel-title">◈ My Risk Distribution</div></div>
+        <div class="panel-body" style="display:flex;align-items:center;justify-content:center;">
+            <canvas id="riskChart" height="180"></canvas>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ Quick Actions</div></div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:14px;">
+            <a href="{{ url_for('user_upload') }}" class="btn btn-primary" style="justify-content:center;padding:14px;">⬡ Upload & Analyze History</a>
+            <a href="{{ url_for('user_live') }}"   class="btn btn-success" style="justify-content:center;padding:14px;">◉ Start Live Monitor</a>
+            <a href="{{ url_for('user_alerts') }}" class="btn btn-danger"  style="justify-content:center;padding:14px;">⚠ View All My Alerts</a>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title">⚠ My Recent Alerts</div>
+        <a href="{{ url_for('user_alerts') }}" class="btn btn-primary btn-sm">View All</a>
+    </div>
+    <div class="panel-body" style="padding:0;">
+        {% if recent_alerts %}
+        <table class="data-table">
+            <thead><tr><th>Risk</th><th>Sequence</th><th>Reason</th><th>Commands</th><th>Time</th></tr></thead>
+            <tbody>
+            {% for a in recent_alerts %}
+            <tr>
+                <td>{% set rs=a['risk_score'] %}
+                    {% if rs>=6 %}<span class="badge badge-high">{{ rs }}</span>
+                    {% elif rs>=3 %}<span class="badge badge-medium">{{ rs }}</span>
+                    {% else %}<span class="badge badge-low">{{ rs }}</span>{% endif %}
+                </td>
+                <td class="mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ a['sequence'] }}">{{ a['sequence'] }}</td>
+                <td style="font-size:12px;color:var(--dim);">{{ a['reason'] }}</td>
+                <td>{% if a['risky_cmds'] %}{% for cmd in a['risky_cmds'].split(',') %}<span class="tag">{{ cmd }}</span>{% endfor %}{% endif %}</td>
+                <td style="font-size:11px;color:var(--dim);white-space:nowrap;">{{ a['timestamp'][:16] }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding:50px;text-align:center;color:var(--dim);">
+            <div style="font-size:40px;margin-bottom:10px;">✅</div>
+            No alerts yet. <a href="{{ url_for('user_upload') }}" style="color:var(--accent);">Upload your history</a> to get started.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const riskDist = {{ risk_dist | tojson }};
+Chart.defaults.color = '#5a7a9a';
+const levels = ['High','Medium','Low'];
+const counts = levels.map(l => riskDist[l] || 0);
+const colors = ['rgba(255,56,100,0.8)','rgba(255,140,0,0.8)','rgba(0,255,159,0.8)'];
+new Chart(document.getElementById('riskChart'), {
+    type:'doughnut',
+    data:{ labels:levels, datasets:[{ data:counts.some(c=>c>0)?counts:[1], backgroundColor:counts.some(c=>c>0)?colors:['rgba(30,58,95,0.4)'], borderColor:'rgba(0,0,0,0.4)', borderWidth:2 }] },
+    options:{ plugins:{ legend:{ display:true, position:'bottom', labels:{ color:'#5a7a9a', padding:16 } } }, cutout:'65%' }
+});
+</script>
+{% endblock %}

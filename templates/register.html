@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSIDS — Register</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@700&family=Exo+2:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#090e1a; --panel:#0f1e38; --border:#1e3a5f; --accent:#00d4ff; --red:#ff3864; --green:#00ff9f; --text:#c8d8f0; --dim:#5a7a9a; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:'Exo 2',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+        body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px); pointer-events:none; z-index:9999; }
+        body::after { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+        .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:40px; width:400px; position:relative; z-index:1; }
+        .card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--accent),transparent); }
+        .logo { text-align:center; margin-bottom:28px; }
+        .logo-text { font-family:'Share Tech Mono',monospace; font-size:24px; color:var(--accent); letter-spacing:5px; }
+        .logo-sub { font-size:11px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+        label { display:block; font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+        input { width:100%; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:4px; padding:10px 14px; color:var(--text); font-size:14px; outline:none; transition:border-color 0.2s; margin-bottom:16px; }
+        input:focus { border-color:var(--accent); }
+        .btn { width:100%; padding:11px; background:rgba(0,212,255,0.1); border:1px solid var(--accent); border-radius:4px; color:var(--accent); font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; }
+        .btn:hover { background:rgba(0,212,255,0.2); }
+        .link { text-align:center; margin-top:16px; font-size:13px; color:var(--dim); }
+        .link a { color:var(--accent); text-decoration:none; }
+        .flash { padding:10px 14px; border-radius:4px; margin-bottom:14px; font-size:13px; border-left:3px solid; }
+        .flash.error   { background:rgba(255,56,100,0.08); border-color:var(--red);   color:var(--red); }
+        .flash.success { background:rgba(0,255,159,0.08);  border-color:var(--green); color:var(--green); }
+        .hint { font-size:11px; color:var(--dim); margin-top:-10px; margin-bottom:14px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">
+        <div class="logo-text">CSIDS</div>
+        <div class="logo-sub">Create Account</div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+    <form method="POST">
+        <div><label>Username</label><input type="text" name="username" required autofocus></div>
+        <div><label>Email (for alerts)</label><input type="email" name="email" placeholder="you@example.com"></div>
+        <div><label>Password</label><input type="password" name="password" required></div>
+        <p class="hint">Account will be created as a regular user.</p>
+        <button type="submit" class="btn">Create Account</button>
+    </form>
+    <div class="link">Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></div>
+</div>
+</body>
+</html>

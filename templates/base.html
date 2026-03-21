@@ -402,30 +402,35 @@
     <div class="sys-status">
         <div class="dot"></div> System Active
     </div>
-    <nav class="nav">
-        <div class="nav-label">Main</div>
-        <a href="{{ url_for('dashboard') }}"
-           class="nav-item {% if request.endpoint=='dashboard' %}active{% endif %}">
-            ◈ Dashboard
-        </a>
-        <a href="{{ url_for('analyze') }}"
-           class="nav-item {% if request.endpoint=='analyze' %}active{% endif %}">
-            ⬡ Analyze
-        </a>
-        <a href="{{ url_for('alerts_page') }}"
-           class="nav-item {% if request.endpoint=='alerts_page' %}active{% endif %}">
-            ⚠ Alerts
-        </a>
-        <a href="{{ url_for('live_monitor') }}"
-           class="nav-item {% if request.endpoint=='live_monitor' %}active{% endif %}">
-            ◉ Live Monitor
-        </a>
-        <div class="nav-label" style="margin-top:10px;">Config</div>
-        <a href="{{ url_for('settings') }}"
-           class="nav-item {% if request.endpoint=='settings' %}active{% endif %}">
-            ⚙ Settings
-        </a>
-    </nav>
+        <!-- REPLACE the entire <nav class="nav">...</nav> block -->
+        <nav class="nav">
+            {% if current_user.is_authenticated and current_user.is_admin %}
+            <!-- ADMIN NAV -->
+            <div class="nav-label">Admin</div>
+            <a href="{{ url_for('dashboard') }}"    class="nav-item {% if request.endpoint=='dashboard' %}active{% endif %}">◈ Dashboard</a>
+            <a href="{{ url_for('analyze') }}"      class="nav-item {% if request.endpoint=='analyze' %}active{% endif %}">⬡ Analyze</a>
+            <a href="{{ url_for('alerts_page') }}"  class="nav-item {% if request.endpoint=='alerts_page' %}active{% endif %}">⚠ Alerts</a>
+            <a href="{{ url_for('live_monitor') }}" class="nav-item {% if request.endpoint=='live_monitor' %}active{% endif %}">◉ Live Monitor</a>
+            <div class="nav-label" style="margin-top:10px;">Config</div>
+            <a href="{{ url_for('settings') }}"     class="nav-item {% if request.endpoint=='settings' %}active{% endif %}">⚙ Settings</a>
+
+            {% elif current_user.is_authenticated %}
+            <!-- USER NAV -->
+            <div class="nav-label">My Account</div>
+            <a href="{{ url_for('user_dashboard') }}" class="nav-item {% if request.endpoint=='user_dashboard' %}active{% endif %}">◈ Overview</a>
+            <a href="{{ url_for('user_upload') }}"    class="nav-item {% if request.endpoint=='user_upload' %}active{% endif %}">⬡ Upload & Analyze</a>
+            <a href="{{ url_for('user_alerts') }}"    class="nav-item {% if request.endpoint=='user_alerts' %}active{% endif %}">⚠ My Alerts</a>
+            <a href="{{ url_for('user_live') }}"      class="nav-item {% if request.endpoint=='user_live' %}active{% endif %}">◉ Live Monitor</a>
+            {% endif %}
+
+            <div class="nav-label" style="margin-top:10px;">Account</div>
+            {% if current_user.is_authenticated %}
+            <div style="padding:6px 20px;font-size:11px;color:var(--green);font-family:var(--mono);">
+                {{ '👑' if current_user.is_admin else '👤' }} {{ current_user.username }}
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color:var(--dim);">⏻ Logout</a>
+            {% endif %}
+        </nav>
 </aside>
 
 <div class="main">
@@ -433,7 +438,7 @@
         <div class="page-title">{% block page_title %}Dashboard{% endblock %}</div>
         <div class="topbar-right">
             <span id="clock"></span>
-            <span>CSIDS v2.0</span>
+            
         </div>
     </div>
 

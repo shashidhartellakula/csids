@@ -52,6 +52,50 @@
     </div>
 </div>
 
+<!-- REGISTERED USERS TABLE -->
+<div class="panel mb-6">
+    <div class="panel-header">
+        <div class="panel-title">👥 Registered Users</div>
+        <span style="font-size:12px;color:var(--dim);">{{ all_auth_users|length }} accounts</span>
+    </div>
+    <div class="panel-body" style="padding:0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Email</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in all_auth_users %}
+            <tr>
+                <td class="mono" style="color:var(--accent);">{{ u['username'] }}</td>
+                <td>
+                    {% if u['role'] == 'admin' %}
+                    <span class="badge" style="background:rgba(255,184,0,0.15);color:var(--warn);border:1px solid var(--warn);">ADMIN</span>
+                    {% else %}
+                    <span class="badge badge-low">USER</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:12px;color:var(--dim);">{{ u['email'] or '—' }}</td>
+                <td style="font-size:11px;color:var(--dim);">{{ u['created_at'][:10] }}</td>
+                <td style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <a href="{{ url_for('admin_user_detail', username=u['username']) }}" class="btn btn-primary btn-sm">👁 View Data</a>
+                    <a href="{{ url_for('live_monitor') }}?watch={{ u['username'] }}" class="btn btn-success btn-sm">◉ Live</a>
+                    {% if u['email'] %}
+                    <button class="btn btn-danger btn-sm" onclick="openSendAlert('{{ u['username'] }}','{{ u['email'] }}')">📧 Alert</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- RECENT ALERTS -->
 <div class="panel">
     <div class="panel-header">
@@ -106,6 +150,28 @@
     </div>
 </div>
 
+<!-- SEND ALERT MODAL -->
+<div id="alertModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:32px;width:420px;position:relative;">
+        <div style="font-family:var(--ui);font-size:14px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">📧 Send Intrusion Alert</div>
+        <form method="POST" action="{{ url_for('admin_send_alert') }}">
+            <input type="hidden" name="target_user" id="modalUser">
+            <div class="form-group">
+                <label>User</label>
+                <input type="text" id="modalUserDisplay" readonly style="color:var(--accent);">
+            </div>
+            <div class="form-group">
+                <label>Recipient Email</label>
+                <input type="email" name="email" id="modalEmail" required placeholder="user@example.com">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" class="btn btn-danger">🔔 Send Alert</button>
+                <button type="button" class="btn btn-sm" style="border-color:var(--dim);color:var(--dim);" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -113,22 +179,17 @@
 const hourly   = {{ hourly | tojson }};
 const riskDist = {{ risk_dist | tojson }};
 
-// shared chart style
 Chart.defaults.color = '#5a7a9a';
 
-// ── Hourly bar chart ──
+// Hourly bar chart
 new Chart(document.getElementById('hourlyChart'), {
     type: 'bar',
     data: {
         labels: Array.from({length:24}, (_,i) => String(i).padStart(2,'0') + 'h'),
         datasets: [{
             data: hourly,
-            backgroundColor: hourly.map(v =>
-                v >= 5 ? 'rgba(255,56,100,0.7)' : 'rgba(0,212,255,0.4)'
-            ),
-            borderColor: hourly.map(v =>
-                v >= 5 ? '#ff3864' : '#00d4ff'
-            ),
+            backgroundColor: hourly.map(v => v >= 5 ? 'rgba(255,56,100,0.7)' : 'rgba(0,212,255,0.4)'),
+            borderColor: hourly.map(v => v >= 5 ? '#ff3864' : '#00d4ff'),
             borderWidth: 1,
             borderRadius: 3,
         }]
@@ -142,7 +203,7 @@ new Chart(document.getElementById('hourlyChart'), {
     }
 });
 
-// ── Risk doughnut chart ──
+// Risk doughnut chart
 const levels = ['High', 'Medium', 'Low'];
 const counts = levels.map(l => riskDist[l] || 0);
 const colors = ['rgba(255,56,100,0.8)', 'rgba(255,140,0,0.8)', 'rgba(0,255,159,0.8)'];
@@ -169,5 +230,16 @@ new Chart(document.getElementById('riskChart'), {
         cutout: '65%',
     }
 });
+
+// Modal functions
+function openSendAlert(username, email) {
+    document.getElementById('modalUser').value = username;
+    document.getElementById('modalUserDisplay').value = username;
+    document.getElementById('modalEmail').value = email;
+    document.getElementById('alertModal').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('alertModal').style.display = 'none';
+}
 </script>
 {% endblock %}

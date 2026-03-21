@@ -1,205 +1,92 @@
-"""
-CSIDS Real-Time Monitor
-Watches ~/.bash_history for new commands and runs detection live.
-
-Usage:
-    python monitor.py --user shashi
-    python monitor.py --user shashi --history /custom/path/.bash_history
-    python monitor.py --user shashi --quiet
-"""
 import time
 import os
 import sys
 import argparse
-from datetime import datetime
+import sqlite3
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(os.path.dirname(__file__), "ids.db")
 
-from detector.preprocess import clean_commands, get_risk_score, get_risky_commands_in
-from detector.sequence_builder import build_sequences
-from detector.detector import detect
-from database import get_db, init_db
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-POLL_INTERVAL = 1.5   # seconds between checks
-WINDOW_SIZE   = 3     # sequence window size
-COLORS = {
-    "reset":  "\033[0m",
-    "red":    "\033[91m",
-    "yellow": "\033[93m",
-    "green":  "\033[92m",
-    "cyan":   "\033[96m",
-    "dim":    "\033[2m",
-    "bold":   "\033[1m",
-}
+def get_risk_score(command):
+    """Simple risk scoring for live commands."""
+    risky = [
+        'rm', 'sudo', 'chmod', 'chown', 'wget', 'curl', 'nc', 'nmap',
+        'passwd', 'su', 'kill', 'pkill', 'dd', 'mkfs', 'fdisk',
+        'iptables', 'ufw', 'ssh', 'scp', 'ftp', 'python', 'perl',
+        'bash', 'sh', 'eval', 'exec', 'base64', 'crontab', 'at',
+        'systemctl', 'service', 'mount', 'umount', 'useradd', 'userdel'
+    ]
+    cmd = command.strip().split()[0] if command.strip() else ''
+    score = 0.0
+    for r in risky:
+        if r in command.lower():
+            score += 2.0
+    if cmd in risky:
+        score += 1.0
+    return min(score, 10.0)
 
-
-def c(text, color):
-    """Wrap text in terminal color."""
-    return COLORS.get(color, "") + str(text) + COLORS["reset"]
-
-
-def tail_new_lines(filepath, last_pos):
-    """Read only new lines added since last_pos."""
-    try:
-        with open(filepath, "r", errors="replace") as f:
-            f.seek(last_pos)
-            new_lines = f.readlines()
-            new_pos   = f.tell()
-        return new_lines, new_pos
-    except FileNotFoundError:
-        return [], last_pos
-
-
-def log_to_db(user, command, risk_score, flagged):
-    """Save live command to DB for the browser dashboard."""
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        cur.execute("""
-            INSERT INTO live_log (user, command, risk_score, flagged)
-            VALUES (?, ?, ?, ?)
-        """, (user, command, risk_score, int(flagged)))
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-
-def save_alert_to_db(user, alert):
-    """Persist a real-time alert to the alerts table."""
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        cur.execute("""
-            INSERT INTO alerts (user, sequence, reason, risk_score, risky_cmds)
-            VALUES (?, ?, ?, ?, ?)
-        """, (user, alert["sequence"], alert["reason"],
-              alert["risk_score"], ",".join(alert["risky"])))
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-
-def print_banner(user, history_path):
-    print(c("=" * 58, "cyan"))
-    print(c("  CSIDS — Real-Time Monitor", "bold"))
-    print(c("=" * 58, "cyan"))
-    print(f"  User     : {c(user, 'cyan')}")
-    print(f"  Watching : {c(history_path, 'dim')}")
-    print(f"  Interval : {POLL_INTERVAL}s")
-    print(c("=" * 58, "cyan"))
-    print()
-
-
-def monitor_loop(user, history_path, verbose=True):
-    init_db()
-
-    # make sure live_log table exists
+def log_command(user, command, risk_score, flagged=0):
     conn = get_db()
-    cur  = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS live_log (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            user       TEXT NOT NULL,
-            command    TEXT NOT NULL,
-            risk_score REAL DEFAULT 0,
-            flagged    INTEGER DEFAULT 0,
-            timestamp  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    conn.execute(
+        "INSERT INTO live_log (user, command, risk_score, flagged) VALUES (?,?,?,?)",
+        (user, command.strip(), risk_score, flagged)
+    )
     conn.commit()
     conn.close()
 
+def monitor(user, history_path):
+    print(f"[CSIDS] Monitoring user: {user}")
+    print(f"[CSIDS] Watching file:   {history_path}")
+    print(f"[CSIDS] Press Ctrl+C to stop.\n")
+
     if not os.path.exists(history_path):
-        print(c(f"[ERROR] History file not found: {history_path}", "red"))
+        print(f"[ERROR] File not found: {history_path}")
         sys.exit(1)
 
-    print_banner(user, history_path)
-
-    # start from end of file — only watch NEW commands
-    with open(history_path, "r", errors="replace") as f:
-        f.seek(0, 2)
+    # start from current end of file
+    with open(history_path, 'r', errors='replace') as f:
+        f.seek(0, 2)  # seek to end
         last_pos = f.tell()
 
-    # rolling buffer keeps last 20 commands for sequence context
-    cmd_buffer = []
+    while True:
+        try:
+            with open(history_path, 'r', errors='replace') as f:
+                f.seek(last_pos)
+                new_lines = f.readlines()
+                last_pos  = f.tell()
 
-    ts = datetime.now().strftime("%H:%M:%S")
-    print(c(f"[{ts}] Monitoring started. Run commands in another terminal...", "dim"))
-    print()
-
-    try:
-        while True:
-            new_lines, last_pos = tail_new_lines(history_path, last_pos)
-
-            if new_lines:
-                cleaned = clean_commands(new_lines)
-                if not cleaned:
-                    time.sleep(POLL_INTERVAL)
+            for line in new_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                # strip bash history timestamps (#1234567890)
+                if line.startswith('#'):
                     continue
 
-                cmd_buffer.extend(cleaned)
-                # keep buffer to last 20 commands
-                if len(cmd_buffer) > 20:
-                    cmd_buffer = cmd_buffer[-20:]
+                risk    = get_risk_score(line)
+                flagged = 1 if risk >= 6 else 0
+                log_command(user, line, risk, flagged)
 
-                for cmd in cleaned:
-                    ts        = datetime.now().strftime("%H:%M:%S")
-                    risk      = get_risk_score(f"{cmd} | {cmd} | {cmd}")
-                    risky     = get_risky_commands_in(cmd)
-                    is_flagged = bool(risky and risk >= 3)
+                icon = '🚨' if flagged else ('🟡' if risk >= 3 else '🟢')
+                print(f"{icon} [{user}] {line}  (risk: {risk:.1f})")
 
-                    if verbose:
-                        if risk >= 6:
-                            icon = c("🔴 HIGH  ", "red")
-                        elif risk >= 3:
-                            icon = c("🟡 WARN  ", "yellow")
-                        else:
-                            icon = c("🟢 OK    ", "green")
+            time.sleep(1)
 
-                        print(f"[{c(ts, 'dim')}] {icon} {c(cmd, 'cyan')}")
-
-                        if risky:
-                            print(f"           {c('⚠ Risky: ' + ', '.join(risky), 'yellow')}")
-
-                    log_to_db(user, cmd, risk, is_flagged)
-
-                # run detection on latest sequences
-                sequences = build_sequences(cmd_buffer, WINDOW_SIZE)
-                if sequences:
-                    # only check last 5 sequences for performance
-                    alerts, err = detect(user, sequences[-5:], source="realtime")
-                    if alerts:
-                        for alert in alerts:
-                            save_alert_to_db(user, alert)
-                            ts = datetime.now().strftime("%H:%M:%S")
-                            print()
-                            print(c("!" * 58, "red"))
-                            print(c(f"  🚨 INTRUSION ALERT [{ts}]", "red"))
-                            print(f"  Sequence  : {c(alert['sequence'], 'yellow')}")
-                            print(f"  Reason    : {alert['reason']}")
-                            print(f"  Risk Score: {c(str(alert['risk_score']) + '/10', 'red')}")
-                            print(f"  Risky Cmds: {c(', '.join(alert['risky']), 'red')}")
-                            print(c("!" * 58, "red"))
-                            print()
-
-            time.sleep(POLL_INTERVAL)
-
-    except KeyboardInterrupt:
-        ts = datetime.now().strftime("%H:%M:%S")
-        print()
-        print(c(f"[{ts}] Monitor stopped.", "dim"))
-
+        except KeyboardInterrupt:
+            print("\n[CSIDS] Monitor stopped.")
+            break
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            time.sleep(2)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CSIDS Real-Time Monitor")
-    parser.add_argument("--user",    required=True,
-                        help="Username to monitor (must have a trained profile)")
-    parser.add_argument("--history", default=os.path.expanduser("~/.bash_history"),
-                        help="Path to bash history file (default: ~/.bash_history)")
-    parser.add_argument("--quiet",   action="store_true",
-                        help="Only show alerts, suppress normal command output")
+    parser = argparse.ArgumentParser(description='CSIDS Live Monitor')
+    parser.add_argument('--user',    required=True, help='Username to monitor')
+    parser.add_argument('--history', default=os.path.expanduser('~/.bash_history'),
+                        help='Path to bash history file')
     args = parser.parse_args()
-
-    monitor_loop(args.user, args.history, verbose=not args.quiet)
+    monitor(args.user, args.history)

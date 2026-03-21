@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Upload & Analyze{% endblock %}
+{% block page_title %}Upload & Analyze{% endblock %}
+{% block content %}
+<div style="max-width:620px;">
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">⬡ Upload Your History</div>
+            <span style="font-size:12px;color:var(--green);">Analyzing as: {{ current_user.username }}</span>
+        </div>
+        <div class="panel-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Mode</label>
+                    <select name="mode">
+                        <option value="train">🧠 Train Profile (first time)</option>
+                        <option value="detect">🔍 Detect Intrusion</option>
+                    </select>
+                    <div class="hint">Train first with your normal history, then run detection later.</div>
+                </div>
+                <div class="form-group">
+                    <label>Upload .bash_history File</label>
+                    <input type="file" name="history" accept=".txt,.log,.history" required>
+                    <div class="hint">Export first: <span class="mono" style="color:var(--green);">cp ~/.bash_history history.txt</span></div>
+                </div>
+                {% if current_user.email %}
+                <div class="form-group">
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="notify_email">
+                        Send alert email to <span class="mono" style="color:var(--accent);margin-left:6px;">{{ current_user.email }}</span>
+                    </label>
+                </div>
+                {% else %}
+                <div class="form-group">
+                    <div class="hint" style="color:var(--orange);">⚠ No email set on your account. Contact admin to enable email alerts.</div>
+                </div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary">Submit →</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

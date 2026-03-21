@@ -4,52 +4,61 @@
 
 {% block content %}
 
-<!-- TOP ROW — controls + session stats -->
 <div class="grid-2 mb-6">
-
     <!-- Controls -->
     <div class="panel">
         <div class="panel-header">
             <div class="panel-title">◉ Monitor Controls</div>
-            <div id="statusBadge" style="display:flex;align-items:center;gap:8px;
-                 font-size:12px;color:var(--dim);">
-                <div id="statusDot" style="width:8px;height:8px;border-radius:50%;
-                     background:var(--dim);transition:all 0.3s;"></div>
+            <div id="statusBadge" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);">
+                <div id="statusDot" style="width:8px;height:8px;border-radius:50%;background:var(--dim);transition:all 0.3s;"></div>
                 <span id="statusText">Stopped</span>
             </div>
         </div>
         <div class="panel-body">
+
+            {% if locked_user %}
+            <!-- Regular user — locked to own account -->
             <div class="form-group">
-                <label>Filter by User</label>
-                <input type="text" id="userFilter" placeholder="e.g. shashi (leave blank for all)">
+                <label>Monitoring User</label>
+                <input type="text" id="userFilter" value="{{ locked_user }}" readonly
+                    style="color:var(--accent);cursor:not-allowed;opacity:0.8;">
+                <div class="hint">You can only monitor your own commands.</div>
             </div>
+            {% else %}
+            <!-- Admin — dropdown of all users -->
+            <div class="form-group">
+                <label>Select User to Monitor</label>
+                <select id="userFilter">
+                    <option value="">— All Users —</option>
+                    {% for u in user_list %}
+                    <option value="{{ u }}" {% if request.args.get('watch')==u %}selected{% endif %}>{{ u }}</option>
+                    {% endfor %}
+                </select>
+                <div class="hint">Select a specific user or leave blank to monitor all users.</div>
+            </div>
+            {% endif %}
+
             <div style="display:flex;gap:10px;margin-top:4px;">
                 <button class="btn btn-success" onclick="startFeed()">▶ Start</button>
-                <button class="btn btn-danger"  onclick="stopFeed()" id="stopBtn" disabled>■ Stop</button>
+                <button class="btn btn-danger" onclick="stopFeed()" id="stopBtn" disabled>■ Stop</button>
                 <button class="btn btn-primary" onclick="clearFeed()">⌫ Clear</button>
             </div>
 
-            <div style="margin-top:20px;padding:14px;background:rgba(0,0,0,0.3);
-                        border-radius:4px;border-left:3px solid var(--green);">
-                <div style="font-size:10px;color:var(--green);font-family:var(--ui);
-                            letter-spacing:2px;margin-bottom:8px;">TERMINAL COMMAND</div>
+            <div style="margin-top:20px;padding:14px;background:rgba(0,0,0,0.3);border-radius:4px;border-left:3px solid var(--green);">
+                <div style="font-size:10px;color:var(--green);font-family:var(--ui);letter-spacing:2px;margin-bottom:8px;">TERMINAL COMMAND</div>
                 <div class="mono" style="font-size:12px;color:var(--text);line-height:1.8;">
                     python monitor.py \<br>
-                    &nbsp;&nbsp;--user YOUR_USERNAME \<br>
+                    &nbsp;&nbsp;--user {% if locked_user %}{{ locked_user }}{% else %}USERNAME{% endif %} \<br>
                     &nbsp;&nbsp;--history ~/.bash_history
                 </div>
-                <div style="font-size:11px;color:var(--dim);margin-top:8px;">
-                    Run this in a separate terminal while the app is running.
-                </div>
+                <div style="font-size:11px;color:var(--dim);margin-top:8px;">Run this in a separate terminal.</div>
             </div>
         </div>
     </div>
 
     <!-- Session Stats -->
     <div class="panel">
-        <div class="panel-header">
-            <div class="panel-title">⚡ Session Stats</div>
-        </div>
+        <div class="panel-header"><div class="panel-title">⚡ Session Stats</div></div>
         <div class="panel-body">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div style="text-align:center;padding:16px;background:rgba(0,0,0,0.2);border-radius:4px;">
@@ -83,31 +92,23 @@
          style="background:#020810;min-height:200px;max-height:340px;overflow-y:auto;
                 padding:14px;font-family:var(--mono);font-size:12px;color:var(--green);
                 border-top:1px solid var(--border);">
-        <div style="color:var(--dim);">[ waiting to start... click ▶ Start above ]</div>
+        <div id="feedPlaceholder" style="color:var(--dim);">[ waiting to start... click ▶ Start above ]</div>
     </div>
 </div>
 
-<!-- LIVE ALERTS FEED -->
+<!-- LIVE ALERTS -->
 <div class="panel">
-    <div class="panel-header">
-        <div class="panel-title">🚨 Live Alerts</div>
-    </div>
+    <div class="panel-header"><div class="panel-title">🚨 Live Alerts</div></div>
     <div class="panel-body" style="padding:0;">
-        <table class="data-table" id="alertTable">
+        <table class="data-table">
             <thead>
                 <tr>
-                    <th>Time</th>
-                    <th>User</th>
-                    <th>Sequence</th>
-                    <th>Risk</th>
-                    <th>Commands</th>
+                    <th>Time</th><th>User</th><th>Sequence</th><th>Risk</th><th>Commands</th>
                 </tr>
             </thead>
             <tbody id="alertBody">
-                <tr>
-                    <td colspan="5" style="text-align:center;color:var(--dim);padding:30px;">
-                        No live alerts yet.
-                    </td>
+                <tr id="alertPlaceholder">
+                    <td colspan="5" style="text-align:center;color:var(--dim);padding:30px;">No live alerts yet.</td>
                 </tr>
             </tbody>
         </table>
@@ -118,34 +119,72 @@
 
 {% block scripts %}
 <script>
-let pollTimer   = null;
-let lastCmdId   = 0;
-let lastAlertId = 0;
-let totalCmds   = 0;
-let totalAlerts = 0;
+let pollTimer    = null;
+let lastCmdId    = 0;
+let lastAlertId  = 0;
+let totalCmds    = 0;
+let totalAlerts  = 0;
 let totalFlagged = 0;
-let riskSum     = 0;
-let running     = false;
+let riskSum      = 0;
+let running      = false;
+let firstPoll    = true;
 
+function getUserFilter() {
+    const el = document.getElementById('userFilter');
+    return el ? el.value.trim() : '';
+}
 
 function startFeed() {
+    // On start, get the current max ID so we only show NEW commands
+    fetch('/api/live-log?since=999999999')
+        .then(r => r.json())
+        .then(() => {
+            // get current max id first
+            return fetch('/api/live-log?since=0&limit=1&order=desc');
+        })
+        .catch(() => {});
+
+    // Set lastCmdId to current max so we only see new entries from now
+    const user = getUserFilter();
+    let url = `/api/live-log?since=0`;
+    if (user) url += `&user=${encodeURIComponent(user)}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(rows => {
+            if (rows.length > 0) {
+                // Start from the latest existing ID
+                lastCmdId = rows[rows.length - 1].id;
+            }
+            // Now begin polling for new entries only
+            beginPolling();
+        })
+        .catch(() => {
+            beginPolling();
+        });
+}
+
+function beginPolling() {
     running = true;
     document.getElementById('stopBtn').disabled = false;
 
-    // status dot → green + pulsing
     const dot  = document.getElementById('statusDot');
     const text = document.getElementById('statusText');
-    dot.style.background  = 'var(--green)';
-    dot.style.boxShadow   = '0 0 8px var(--green)';
-    dot.style.animation   = 'blink 1.5s infinite';
-    text.textContent      = 'Monitoring';
-    text.style.color      = 'var(--green)';
+    dot.style.background = 'var(--green)';
+    dot.style.boxShadow  = '0 0 8px var(--green)';
+    dot.style.animation  = 'blink 1.5s infinite';
+    text.textContent     = 'Monitoring';
+    text.style.color     = 'var(--green)';
 
-    appendCmd('[ Feed started — polling every 2s ]', 'dim');
+    // remove placeholder
+    const ph = document.getElementById('feedPlaceholder');
+    if (ph) ph.remove();
+
+    appendCmd('[ monitoring started — waiting for new commands... ]', 'dim');
+    appendCmd('[ run: python monitor.py --user ' + (getUserFilter() || 'USERNAME') + ' --history ~/.bash_history ]', 'dim');
+
     pollTimer = setInterval(poll, 2000);
-    poll(); // immediate first poll
 }
-
 
 function stopFeed() {
     running = false;
@@ -160,49 +199,42 @@ function stopFeed() {
     dot.style.animation  = 'none';
     text.textContent     = 'Stopped';
     text.style.color     = 'var(--dim)';
-
-    appendCmd('[ Feed stopped ]', 'dim');
+    appendCmd('[ feed stopped ]', 'dim');
 }
 
-
 function clearFeed() {
-    document.getElementById('cmdFeed').innerHTML = '';
+    const feed = document.getElementById('cmdFeed');
+    feed.innerHTML = '<div id="feedPlaceholder" style="color:var(--dim);">[ waiting to start... click ▶ Start above ]</div>';
     document.getElementById('alertBody').innerHTML =
-        '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:30px;">No live alerts yet.</td></tr>';
+        '<tr id="alertPlaceholder"><td colspan="5" style="text-align:center;color:var(--dim);padding:30px;">No live alerts yet.</td></tr>';
     totalCmds = totalAlerts = totalFlagged = 0;
-    riskSum = 0;
+    riskSum   = 0;
+    lastCmdId = 0;
+    lastAlertId = 0;
     updateStats();
 }
 
-
 async function poll() {
-    const user = document.getElementById('userFilter').value.trim();
+    const user = getUserFilter();
 
     // poll commands
     try {
-        const url = `/api/live-log?since=${lastCmdId}${user ? '&user=' + user : ''}`;
+        let url = `/api/live-log?since=${lastCmdId}`;
+        if (user) url += `&user=${encodeURIComponent(user)}`;
+
         const res  = await fetch(url);
         const rows = await res.json();
 
         rows.forEach(r => {
             lastCmdId = Math.max(lastCmdId, r.id);
-            const ts   = r.timestamp.substring(11, 19);
-            const risk = parseFloat(r.risk_score);
+            const ts   = r.timestamp ? r.timestamp.substring(11, 19) : '';
+            const risk = parseFloat(r.risk_score) || 0;
 
             let icon, cls;
-            if (r.flagged) {
-                icon = '🚨';
-                cls  = 'alert';
-            } else if (risk >= 6) {
-                icon = '🔴';
-                cls  = 'high';
-            } else if (risk >= 3) {
-                icon = '🟡';
-                cls  = 'warn';
-            } else {
-                icon = '🟢';
-                cls  = '';
-            }
+            if (r.flagged)    { icon = '🚨'; cls = 'alert'; }
+            else if (risk>=6) { icon = '🔴'; cls = 'high'; }
+            else if (risk>=3) { icon = '🟡'; cls = 'warn'; }
+            else              { icon = '🟢'; cls = ''; }
 
             appendCmd(`[${ts}] ${icon} [${r.user}]  ${r.command}   (risk: ${risk.toFixed(1)})`, cls);
             totalCmds++;
@@ -211,13 +243,16 @@ async function poll() {
         });
 
         if (rows.length) updateStats();
+
     } catch(e) {
         appendCmd('[poll error: ' + e.message + ']', 'warn');
     }
 
     // poll alerts
     try {
-        const aurl = `/api/recent-alerts?since=${lastAlertId}${user ? '&user=' + user : ''}`;
+        let aurl = `/api/recent-alerts?since=${lastAlertId}`;
+        if (user) aurl += `&user=${encodeURIComponent(user)}`;
+
         const ares  = await fetch(aurl);
         const arows = await ares.json();
 
@@ -231,50 +266,33 @@ async function poll() {
     } catch(e) {}
 }
 
-
 function appendCmd(text, cls) {
     const feed = document.getElementById('cmdFeed');
-
-    // remove placeholder
-    const placeholder = feed.querySelector('div');
-    if (placeholder && placeholder.style.color === 'var(--dim)') {
-        placeholder.remove();
-    }
-
     const line = document.createElement('div');
-    line.style.lineHeight = '1.7';
-    line.style.borderBottom = '1px solid rgba(30,58,95,0.2)';
+    line.style.lineHeight    = '1.7';
+    line.style.borderBottom  = '1px solid rgba(30,58,95,0.2)';
     line.style.paddingBottom = '2px';
 
-    if (cls === 'alert' || cls === 'high') {
-        line.style.color = 'var(--red)';
-    } else if (cls === 'warn') {
-        line.style.color = 'var(--orange)';
-    } else if (cls === 'dim') {
-        line.style.color = 'var(--dim)';
-    }
+    if      (cls==='alert'||cls==='high') line.style.color = 'var(--red)';
+    else if (cls==='warn')                line.style.color = 'var(--orange)';
+    else if (cls==='dim')                 line.style.color = 'var(--dim)';
 
     line.textContent = text;
     feed.appendChild(line);
     feed.scrollTop = feed.scrollHeight;
 
     // cap at 300 lines
-    while (feed.children.length > 300) {
-        feed.removeChild(feed.firstChild);
-    }
+    while (feed.children.length > 300) feed.removeChild(feed.firstChild);
 }
-
 
 function addAlertRow(a) {
     const tbody = document.getElementById('alertBody');
-
-    // remove "no alerts" placeholder
-    if (tbody.querySelector('td[colspan]')) {
-        tbody.innerHTML = '';
-    }
+    // remove placeholder row
+    const ph = document.getElementById('alertPlaceholder');
+    if (ph) ph.remove();
 
     const rs       = parseFloat(a.risk_score);
-    const badgeCls = rs >= 6 ? 'badge-high' : rs >= 3 ? 'badge-medium' : 'badge-low';
+    const badgeCls = rs>=6 ? 'badge-high' : rs>=3 ? 'badge-medium' : 'badge-low';
     const cmds     = a.risky_cmds
         ? a.risky_cmds.split(',').map(c => `<span class="tag">${c}</span>`).join('')
         : '';
@@ -285,14 +303,11 @@ function addAlertRow(a) {
     row.innerHTML = `
         <td style="font-size:11px;color:var(--dim);">${ts}</td>
         <td class="mono" style="color:var(--accent);">${a.user}</td>
-        <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;
-            white-space:nowrap;" title="${a.sequence}">${a.sequence}</td>
+        <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.sequence}">${a.sequence}</td>
         <td><span class="badge ${badgeCls}">${rs}</span></td>
-        <td>${cmds}</td>
-    `;
-    tbody.insertBefore(row, tbody.firstChild); // newest first
+        <td>${cmds}</td>`;
+    tbody.insertBefore(row, tbody.firstChild);
 }
-
 
 function updateStats() {
     document.getElementById('statCmds').textContent    = totalCmds;
