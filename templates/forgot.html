@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSIDS — Forgot Password</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@700&family=Exo+2:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#090e1a; --panel:#0f1e38; --border:#1e3a5f; --accent:#00d4ff; --red:#ff3864; --green:#00ff9f; --text:#c8d8f0; --dim:#5a7a9a; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:'Exo 2',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+        body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px); pointer-events:none; z-index:9999; }
+        body::after { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+        .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:40px; width:420px; position:relative; z-index:1; }
+        .card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--accent),transparent); }
+        .logo { text-align:center; margin-bottom:28px; }
+        .logo-text { font-family:'Share Tech Mono',monospace; font-size:24px; color:var(--accent); letter-spacing:5px; }
+        .logo-sub { font-size:11px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+        .info-box { background:rgba(0,212,255,0.05); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:4px; padding:16px; margin-bottom:20px; }
+        .info-box p { font-size:13px; color:var(--text); line-height:1.8; }
+        .info-box p span { color:var(--accent); font-family:'Share Tech Mono',monospace; }
+        .step { display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; }
+        .step-num { background:var(--accent); color:#000; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; flex-shrink:0; margin-top:2px; }
+        .step-text { font-size:13px; color:var(--text); line-height:1.6; }
+        .btn { display:block; text-align:center; padding:11px; background:rgba(0,212,255,0.1); border:1px solid var(--accent); border-radius:4px; color:var(--accent); font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; text-decoration:none; margin-top:20px; }
+        .btn:hover { background:rgba(0,212,255,0.2); }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">
+        <div class="logo-text">CSIDS</div>
+        <div class="logo-sub">Forgot Password</div>
+    </div>
+
+    <div class="info-box">
+        <p>Password reset is handled by your <span>system administrator</span>. Please follow the steps below.</p>
+    </div>
+
+    <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Contact your admin and tell them your <span style="color:#00d4ff;font-family:'Share Tech Mono',monospace;">username</span></div>
+    </div>
+    <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Admin will reset your password from the <span style="color:#00d4ff;font-family:'Share Tech Mono',monospace;">dashboard</span></div>
+    </div>
+    <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Admin will give you a <span style="color:#00d4ff;font-family:'Share Tech Mono',monospace;">new temporary password</span></div>
+    </div>
+    <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">Login with the temporary password then go to <span style="color:#00d4ff;font-family:'Share Tech Mono',monospace;">Reset Password</span> to change it</div>
+    </div>
+
+    <a href="{{ url_for('auth.login') }}" class="btn">← Back to Login</a>
+</div>
+</body>
+</html>

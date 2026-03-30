@@ -57,3 +57,8 @@ def register():
         flash("Account created! Please log in.", "success")
         return redirect(url_for('auth.login'))
     return render_template('register.html')
+
+
+@auth.route('/forgot')
+def forgot():
+    return render_template('forgot.html')

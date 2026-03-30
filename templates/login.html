@@ -42,7 +42,12 @@
         <div><label>Password</label><input type="password" name="password" required></div>
         <button type="submit" class="btn">Login →</button>
     </form>
-    <div class="link">No account? <a href="{{ url_for('auth.register') }}">Register here</a></div>
+    <div class="link">
+    No account? <a href="{{ url_for('auth.register') }}">Register here</a>
+    </div>
+    <!-- <div class="link" style="margin-top:10px;">
+        Forgot password? <a href="{{ url_for('auth.forgot') }}">Contact admin</a>
+    </div> -->
 </div>
 </body>
 </html>

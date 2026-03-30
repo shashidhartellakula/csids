@@ -73,6 +73,29 @@ def is_text_file(filepath):
 #  ADMIN ROUTES
 # ═══════════════════════════════════════════
 
+@app.route("/admin/reset-user-password/<int:user_id>", methods=["POST"])
+@admin_required
+def admin_reset_user_password(user_id):
+    new_pass = request.form.get("new_password", "").strip()
+    if not new_pass or len(new_pass) < 6:
+        flash("Password must be at least 6 characters.", "error")
+        return redirect(url_for("dashboard"))
+    from werkzeug.security import generate_password_hash
+    conn = get_db()
+    cur  = conn.cursor()
+    cur.execute("SELECT username FROM auth_users WHERE id=?", (user_id,))
+    row = cur.fetchone()
+    if not row:
+        flash("User not found.", "error")
+        conn.close()
+        return redirect(url_for("dashboard"))
+    cur.execute("UPDATE auth_users SET password_hash=? WHERE id=?",
+                (generate_password_hash(new_pass), user_id))
+    conn.commit()
+    conn.close()
+    flash(f"✅ Password reset for '{row['username']}' successfully.", "success")
+    return redirect(url_for("dashboard"))
+
 @app.route("/")
 @admin_required
 def dashboard():
@@ -382,6 +405,40 @@ def user_live():
     if current_user.is_admin:
         return redirect(url_for("live_monitor"))
     return render_template("live.html", locked_user=current_user.username, user_list=[])
+
+@app.route("/user/report")
+@login_required
+def user_download_report():
+    if current_user.is_admin:
+        return redirect(url_for("dashboard"))
+
+    username = current_user.username
+    from pdf_report import generate_pdf_report
+
+    conn = get_db()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT * FROM alerts WHERE user=?
+        ORDER BY timestamp DESC LIMIT 500
+    """, (username,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    alerts = []
+    for r in rows:
+        r['risky'] = r['risky_cmds'].split(',') if r['risky_cmds'] else []
+        alerts.append(r)
+
+    stats     = get_profile_stats(username)
+    pdf_bytes = generate_pdf_report(username, alerts, stats)
+
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"csids_report_{username}.pdf"
+    )
+
 
 
 # ═══════════════════════════════════════════

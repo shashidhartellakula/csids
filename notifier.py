@@ -1,146 +1,157 @@
-"""
-CSIDS Email Notifier
-Sends alert emails via SMTP (Gmail, Outlook, etc.)
-
-Configure by setting environment variables or using the Settings page:
-    CSIDS_SMTP_HOST  — default: smtp.gmail.com
-    CSIDS_SMTP_PORT  — default: 587
-    CSIDS_SMTP_USER  — your email address
-    CSIDS_SMTP_PASS  — your app password
-"""
 import smtplib
 import os
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from email.mime.text      import MIMEText
+from email.mime.base      import MIMEBase
+from email                import encoders
 
 
-def get_smtp_config():
-    return {
-        "host":     os.environ.get("CSIDS_SMTP_HOST", "smtp.gmail.com"),
-        "port":     int(os.environ.get("CSIDS_SMTP_PORT", "587")),
-        "user":     os.environ.get("CSIDS_SMTP_USER", ""),
-        "password": os.environ.get("CSIDS_SMTP_PASS", ""),
-        "from":     os.environ.get("CSIDS_SMTP_USER", "csids@localhost"),
-    }
+def send_alert_email(to_email, username, alerts):
+    smtp_host = os.environ.get("CSIDS_SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("CSIDS_SMTP_PORT", 587))
+    smtp_user = os.environ.get("CSIDS_SMTP_USER", "")
+    smtp_pass = os.environ.get("CSIDS_SMTP_PASS", "")
 
-
-def send_alert_email(to_email, user, alerts):
-    """
-    Send an intrusion alert email.
-    Returns True if sent, False if failed or not configured.
-    """
-    config = get_smtp_config()
-
-    if not config["user"] or not config["password"]:
-        print("[Notifier] SMTP not configured — skipping email.")
+    if not smtp_user or not smtp_pass:
+        print("[NOTIFIER] SMTP not configured — skipping email")
         return False
 
-    subject = f"🚨 CSIDS Alert: {len(alerts)} intrusion(s) detected for '{user}'"
+    high   = [a for a in alerts if (a.get('risk_score') or 0) >= 6]
+    medium = [a for a in alerts if 3 <= (a.get('risk_score') or 0) < 6]
+    low    = [a for a in alerts if (a.get('risk_score') or 0) < 3]
 
-    # build alert rows for the HTML table
-    alert_rows = ""
-    for a in alerts:
-        rs    = a.get("risk_score", 0)
-        color = "#ff3864" if rs >= 6 else "#ff8c00" if rs >= 3 else "#00c97a"
-        cmds  = ", ".join(a.get("risky", []))
-        alert_rows += f"""
-        <tr>
-            <td style="padding:8px;border:1px solid #1e3a5f;
-                       font-family:monospace;font-size:12px;
-                       color:#c8d8f0;">{a.get('sequence','')}</td>
-            <td style="padding:8px;border:1px solid #1e3a5f;
-                       font-size:12px;color:#8a9ab0;">{a.get('reason','')}</td>
-            <td style="padding:8px;border:1px solid #1e3a5f;
-                       color:{color};font-weight:bold;
-                       font-family:monospace;">{rs}/10</td>
-            <td style="padding:8px;border:1px solid #1e3a5f;
-                       font-size:12px;color:#ff3864;">{cmds}</td>
-        </tr>
-        """
+    rows_html = ''.join([
+        f"""<tr style="background:{'#fff5f5' if (a.get('risk_score') or 0)>=6 
+            else '#fffbf0' if (a.get('risk_score') or 0)>=3 else 'white'};">
+            <td style="padding:10px;font-family:monospace;font-size:12px;
+                max-width:200px;overflow:hidden;">
+                {a.get('sequence','')}
+            </td>
+            <td style="padding:10px;font-weight:bold;
+                color:{'#ff3864' if (a.get('risk_score') or 0)>=6 
+                else '#ff8c00' if (a.get('risk_score') or 0)>=3 
+                else '#00b894'};">
+                {float(a.get('risk_score', 0)):.1f}
+            </td>
+            <td style="padding:10px;color:#666;font-size:12px;">
+                {a.get('reason','')}
+            </td>
+        </tr>"""
+        for a in alerts[:10]
+    ])
 
-    html = f"""
-    <html>
-    <body style="font-family:sans-serif;background:#090e1a;
-                 color:#c8d8f0;padding:24px;margin:0;">
-      <div style="max-width:680px;margin:auto;background:#0f1e38;
-                  border-radius:8px;border:1px solid #1e3a5f;
-                  overflow:hidden;">
+    body = f"""
+    <html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;">
+    <div style="max-width:600px;margin:auto;background:white;
+                border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
 
-        <!-- header -->
-        <div style="background:#0a1628;padding:24px 28px;
-                    border-bottom:2px solid #00d4ff;">
-          <div style="font-family:monospace;font-size:24px;
-                      color:#00d4ff;letter-spacing:4px;">CSIDS</div>
-          <div style="font-size:11px;color:#5a7a9a;
-                      letter-spacing:2px;margin-top:4px;">
-              INTRUSION DETECTION ALERT
-          </div>
+        <div style="background:#0a1628;padding:24px;text-align:center;">
+            <h1 style="color:#00d4ff;font-family:monospace;
+                       letter-spacing:4px;margin:0;">CSIDS</h1>
+            <p style="color:#5a7a9a;margin:6px 0 0;font-size:13px;">
+                Command Sequence Intrusion Detection System
+            </p>
         </div>
 
-        <!-- body -->
-        <div style="padding:24px 28px;">
-          <p style="color:#ff3864;font-size:18px;font-weight:bold;margin-bottom:16px;">
-              🚨 {len(alerts)} intrusion(s) detected
-          </p>
-          <p style="margin-bottom:6px;">
-              <b>User:</b>
-              <span style="font-family:monospace;color:#00d4ff;">{user}</span>
-          </p>
-          <p style="margin-bottom:20px;">
-              <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-          </p>
+        <div style="padding:24px;">
+            <div style="background:#fff3cd;border:1px solid #ffc107;
+                        border-radius:6px;padding:14px;margin-bottom:20px;">
+                <strong>⚠ Intrusion activity detected for user:
+                    <span style="color:#d63031;">{username}</span>
+                </strong><br>
+                <span style="font-size:12px;color:#666;">
+                    Please review the details below and take action immediately.
+                </span>
+            </div>
 
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="background:#0a1628;">
-                <th style="padding:10px 8px;border:1px solid #1e3a5f;
-                           text-align:left;font-size:11px;
-                           color:#5a7a9a;letter-spacing:1px;">SEQUENCE</th>
-                <th style="padding:10px 8px;border:1px solid #1e3a5f;
-                           text-align:left;font-size:11px;
-                           color:#5a7a9a;letter-spacing:1px;">REASON</th>
-                <th style="padding:10px 8px;border:1px solid #1e3a5f;
-                           text-align:left;font-size:11px;
-                           color:#5a7a9a;letter-spacing:1px;">RISK</th>
-                <th style="padding:10px 8px;border:1px solid #1e3a5f;
-                           text-align:left;font-size:11px;
-                           color:#5a7a9a;letter-spacing:1px;">COMMANDS</th>
-              </tr>
-            </thead>
-            <tbody>{alert_rows}</tbody>
-          </table>
+            <table style="width:100%;border-collapse:collapse;
+                          margin-bottom:20px;text-align:center;">
+                <tr>
+                    <td style="background:#ff3864;color:white;padding:16px;
+                               border-radius:4px;width:32%;">
+                        <div style="font-size:28px;font-weight:bold;">{len(high)}</div>
+                        <div style="font-size:11px;margin-top:4px;">HIGH RISK</div>
+                    </td>
+                    <td style="width:2%;"></td>
+                    <td style="background:#ff8c00;color:white;padding:16px;
+                               border-radius:4px;width:32%;">
+                        <div style="font-size:28px;font-weight:bold;">{len(medium)}</div>
+                        <div style="font-size:11px;margin-top:4px;">MEDIUM RISK</div>
+                    </td>
+                    <td style="width:2%;"></td>
+                    <td style="background:#00b894;color:white;padding:16px;
+                               border-radius:4px;width:32%;">
+                        <div style="font-size:28px;font-weight:bold;">{len(low)}</div>
+                        <div style="font-size:11px;margin-top:4px;">LOW RISK</div>
+                    </td>
+                </tr>
+            </table>
 
-          <p style="margin-top:20px;font-size:12px;color:#5a7a9a;">
-            This alert was generated automatically by CSIDS.<br>
-            Review your system immediately if this activity is unexpected.
-          </p>
+            <h3 style="color:#0a1628;border-bottom:2px solid #00d4ff;
+                       padding-bottom:8px;margin-bottom:16px;">
+                Alert Details
+            </h3>
+
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="background:#0a1628;color:white;">
+                        <th style="padding:10px;text-align:left;">Sequence</th>
+                        <th style="padding:10px;text-align:left;">Score</th>
+                        <th style="padding:10px;text-align:left;">Reason</th>
+                    </tr>
+                </thead>
+                <tbody>{rows_html}</tbody>
+            </table>
+
+            {'<p style="color:#999;font-size:12px;margin-top:8px;">Showing first 10 alerts. Full report attached as PDF.</p>' if len(alerts) > 10 else ''}
+
+            <div style="margin-top:24px;padding:14px;background:#f8f9fa;
+                        border-radius:6px;font-size:12px;color:#666;
+                        border-left:3px solid #00d4ff;">
+                This is an automated security alert from CSIDS.<br>
+                A detailed PDF report is attached to this email.
+            </div>
         </div>
-
-        <!-- footer -->
-        <div style="padding:14px 28px;border-top:1px solid #1e3a5f;
-                    font-size:11px;color:#5a7a9a;text-align:center;">
-            CSIDS v2.0 — Command Sequence Intrusion Detection System
-        </div>
-
-      </div>
-    </body>
-    </html>
+    </div>
+    </body></html>
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = config["from"]
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html, "html"))
+    msg            = MIMEMultipart('mixed')
+    msg['Subject'] = f"🚨 CSIDS Security Alert — Intrusion Detected for {username}"
+    msg['From']    = smtp_user
+    msg['To']      = to_email
+    msg.attach(MIMEText(body, 'html'))
 
+    # attach PDF
     try:
-        with smtplib.SMTP(config["host"], config["port"]) as server:
+        from pdf_report       import generate_pdf_report
+        from detector.profiler import get_profile_stats
+
+        stats     = get_profile_stats(username)
+        pdf_bytes = generate_pdf_report(username, alerts, stats)
+
+        pdf_part = MIMEBase('application', 'octet-stream')
+        pdf_part.set_payload(pdf_bytes)
+        encoders.encode_base64(pdf_part)
+        pdf_part.add_header(
+            'Content-Disposition',
+            f'attachment; filename="csids_report_{username}.pdf"'
+        )
+        msg.attach(pdf_part)
+        print(f"[NOTIFIER] PDF attached for {username}")
+
+    except Exception as e:
+        print(f"[NOTIFIER] PDF attachment failed: {e}")
+
+    # send email
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.ehlo()
             server.starttls()
-            server.login(config["user"], config["password"])
-            server.sendmail(config["from"], to_email, msg.as_string())
-        print(f"[Notifier] Alert email sent to {to_email}")
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        print(f"[NOTIFIER] ✅ Email sent to {to_email}")
         return True
     except Exception as e:
-        print(f"[Notifier] Failed to send email: {e}")
+        print(f"[NOTIFIER] ❌ Email failed: {e}")
         return False
