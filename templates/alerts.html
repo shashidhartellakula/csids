@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Alerts{% endblock %}
-{% block page_title %}All Alerts{% endblock %}
+{% block page_title %}{% if user_view %}My Alerts{% else %}All Alerts{% endif %}{% endblock %}
 
 {% block content %}
 <div class="panel">
     <div class="panel-header">
         <div class="panel-title">⚠ Alert Log</div>
-        <span style="font-size:12px;color:var(--dim);">{{ alerts|length }} total</span>
+        <span style="font-size:12px;color:var(--dim);">
+            {{ alerts|length }} total
+        </span>
     </div>
     <div class="panel-body" style="padding:0;">
         {% if alerts %}
@@ -14,27 +16,66 @@
             <thead>
                 <tr>
                     <th>Time</th>
-                    <th>User</th>
+                    <th>{% if not user_view %}User{% endif %}</th>
                     <th>Sequence</th>
                     <th>Reason</th>
                     <th>Risk</th>
                     <th>Commands</th>
+                    <th>Context</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
             {% for a in alerts %}
             <tr>
-                <td style="font-size:11px;color:var(--dim);white-space:nowrap;">{{ a['timestamp'][:16] }}</td>
-                <td class="mono">{{ a['user'] }}</td>
-                <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                    title="{{ a['sequence'] }}">{{ a['sequence'] }}</td>
-                <td style="font-size:12px;color:var(--dim);">{{ a['reason'] }}</td>
+                <!-- TIME -->
+                <td style="font-size:11px;color:var(--dim);white-space:nowrap;">
+                    {{ a['timestamp'][:16] }}
+                    {% set hour = a['timestamp'][11:13]|int %}
+                    {% if hour < 8 or hour > 18 %}
+                    <div style="color:var(--red);font-size:10px;">
+                        ⚠ Outside work hours
+                    </div>
+                    {% endif %}
+                </td>
+
+                <!-- USER (admin only) -->
+                <td>
+                    {% if not user_view %}
+                    <span class="mono" style="color:var(--accent);">
+                        {{ a['user'] }}
+                    </span>
+                    {% endif %}
+                </td>
+
+                <!-- SEQUENCE -->
+                <td class="mono"
+                    style="max-width:200px;overflow:hidden;
+                           text-overflow:ellipsis;white-space:nowrap;"
+                    title="{{ a['sequence'] }}">
+                    {{ a['sequence'] }}
+                </td>
+
+                <!-- REASON -->
+                <td style="font-size:12px;color:var(--dim);">
+                    {{ a['reason'] }}
+                </td>
+
+                <!-- RISK SCORE -->
                 <td>
                     {% set rs = a['risk_score'] %}
-                    {% if rs >= 6 %}<span class="badge badge-high">{{ rs }}</span>
-                    {% elif rs >= 3 %}<span class="badge badge-medium">{{ rs }}</span>
-                    {% else %}<span class="badge badge-low">{{ rs }}</span>{% endif %}
+                    {% if rs >= 8 %}
+                    <span class="badge badge-high">{{ rs }} 🔴</span>
+                    {% elif rs >= 6 %}
+                    <span class="badge badge-high">{{ rs }}</span>
+                    {% elif rs >= 4 %}
+                    <span class="badge badge-medium">{{ rs }}</span>
+                    {% else %}
+                    <span class="badge badge-low">{{ rs }}</span>
+                    {% endif %}
                 </td>
+
+                <!-- RISKY COMMANDS -->
                 <td>
                     {% if a['risky_cmds'] %}
                     {% for cmd in a['risky_cmds'].split(',') %}
@@ -42,13 +83,157 @@
                     {% endfor %}
                     {% endif %}
                 </td>
+
+                <!-- CONTEXT — helps decide legitimate or not -->
+                <td style="font-size:11px;">
+                    {% set rs  = a['risk_score'] %}
+                    {% set hour = a['timestamp'][11:13]|int %}
+                    {% set seq  = a['sequence'].lower() %}
+                    {% if rs >= 8 %}
+                    <span style="color:var(--red);">
+                        🚨 High risk
+                    </span>
+                    {% elif 'nc' in seq or '4444' in seq
+                            or 'netcat' in seq %}
+                    <span style="color:var(--red);">
+                        🚨 Possible backdoor
+                    </span>
+                    {% elif '/etc/shadow' in seq
+                            or '/etc/sudoers' in seq %}
+                    <span style="color:var(--red);">
+                        🔐 Critical file access
+                    </span>
+                    {% elif '/etc/passwd' in seq %}
+                    <span style="color:var(--orange);">
+                        🔐 System file access
+                    </span>
+                    {% elif hour < 8 or hour > 18 %}
+                    <span style="color:var(--orange);">
+                        🌙 Outside work hours
+                    </span>
+                    {% elif 'wget' in seq or 'curl' in seq %}
+                    <span style="color:var(--orange);">
+                        📥 File download
+                    </span>
+                    {% elif rs >= 4 %}
+                    <span style="color:var(--warn);">
+                        ⚠ Review carefully
+                    </span>
+                    {% else %}
+                    <span style="color:var(--green);">
+                        ℹ May be legitimate
+                    </span>
+                    {% endif %}
+                </td>
+
+                <!-- ACTION BUTTONS -->
+                <td>
+                    {% if not user_view %}
+                    <!-- ADMIN actions -->
+                    <div style="display:flex;gap:6px;flex-direction:column;">
+                        <form method="POST"
+                              action="{{ url_for('mark_safe',
+                                        alert_id=a['id']) }}">
+                            <button type="submit"
+                                class="btn btn-sm"
+                                style="border-color:var(--green);
+                                       color:var(--green);"
+                                onclick="return confirm(
+                                    'Mark this sequence as safe?')">
+                                ✅ Mark Safe
+                            </button>
+                        </form>
+                        <button class="btn btn-danger btn-sm"
+                            onclick="openSendAlert(
+                                '{{ a['user'] }}', '')">
+                            📧 Send Alert
+                        </button>
+                    </div>
+                    {% else %}
+                    <!-- USER actions -->
+                    <form method="POST"
+                          action="{{ url_for('user_mark_safe',
+                                    alert_id=a['id']) }}">
+                        <button type="submit"
+                            class="btn btn-sm"
+                            style="border-color:var(--green);
+                                   color:var(--green);"
+                            onclick="return confirm(
+                                'Is this command normal for you? '
+                                'System will not alert on this again.')">
+                            ✅ This is Safe
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <div style="padding:40px;text-align:center;color:var(--dim);">No alerts yet.</div>
+        <div style="padding:40px;text-align:center;color:var(--dim);">
+            No alerts yet.
+        </div>
         {% endif %}
     </div>
 </div>
+
+<!-- Send Alert Modal (admin only) -->
+{% if not user_view %}
+<div id="alertModal"
+     style="display:none;position:fixed;inset:0;
+            background:rgba(0,0,0,0.7);z-index:1000;
+            align-items:center;justify-content:center;">
+    <div style="background:var(--panel);
+                border:1px solid var(--border);
+                border-radius:8px;padding:32px;width:420px;">
+        <div style="font-family:var(--ui);font-size:14px;
+                    color:var(--accent);letter-spacing:2px;
+                    text-transform:uppercase;margin-bottom:20px;">
+            📧 Send Intrusion Alert
+        </div>
+        <form method="POST"
+              action="{{ url_for('admin_send_alert') }}">
+            <input type="hidden" name="target_user" id="modalUser">
+            <div class="form-group">
+                <label>User</label>
+                <input type="text" id="modalUserDisplay"
+                       readonly style="color:var(--accent);">
+            </div>
+            <div class="form-group">
+                <label>Recipient Email</label>
+                <input type="email" name="email"
+                       id="modalEmail" required
+                       placeholder="user@example.com">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" class="btn btn-danger">
+                    🔔 Send Alert
+                </button>
+                <button type="button"
+                        class="btn btn-sm"
+                        style="border-color:var(--dim);color:var(--dim);"
+                        onclick="closeModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openSendAlert(username, email) {
+    document.getElementById('modalUser').value        = username;
+    document.getElementById('modalUserDisplay').value = username;
+    document.getElementById('modalEmail').value       = email;
+    document.getElementById('alertModal').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('alertModal').style.display = 'none';
+}
+</script>
 {% endblock %}
